@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+enum ClassStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  DROPPED
+}
+
+enum ContentType {
+  VIDEO
+  DOCUMENT
+  QUIZ
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  passwordHash  String
+  fullName      String
+  phone         String?
+  avatarUrl     String?
+  status        UserStatus   @default(PENDING)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  taughtClasses Class[]      @relation("TeacherClasses")
+  enrollments   Enrollment[]
+  ownedLectures Lecture[]
+  roles         UserRole[]
+  attendances   SessionAttendance[]
+
+  @@map("users")
+}
+
+model Role {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model Program {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  courses     Course[]
+
+  @@map("programs")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  programId   String
+  code        String   @unique
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  classes     Class[]
+  lectures    Lecture[]
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  @@map("courses")
+}
+
+model Class {
+  id            String       @id @default(cuid())
+  courseId       String
+  teacherId      String
+  code           String       @unique
+  title          String
+  startDate      DateTime?
+  endDate        DateTime?
+  status         ClassStatus  @default(DRAFT)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  course         Course       @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  teacher        User         @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Restrict)
+  enrollments    Enrollment[]
+  liveSessions   LiveSession[]
+
+  @@map("classes")
+}
+
+model Enrollment {
+  id          String           @id @default(cuid())
+  classId     String
+  studentId   String
+  status      EnrollmentStatus @default(ENROLLED)
+  progress    Decimal          @default(0) @db.Decimal(5, 2)
+  avgScore    Decimal          @default(0) @db.Decimal(5, 2)
+  completedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  class       Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student     User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+  @@map("enrollments")
+}
+
+model Lecture {
+  id          String   @id @default(cuid())
+  courseId     String
+  ownerId      String
+  title        String
+  description  String?
+  isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  owner        User     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  modules      Module[]
+
+  @@map("lectures")
+}
+
+model Module {
+  id          String    @id @default(cuid())
+  lectureId   String
+  title       String
+  description String?
+  orderIndex  Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  contents    Content[]
+  lecture     Lecture   @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@unique([lectureId, orderIndex])
+  @@map("modules")
+}
+
+model Content {
+  id          String      @id @default(cuid())
+  moduleId    String
+  type        ContentType
+  title       String
+  orderIndex  Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  document    Document?
+  module      Module      @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  quiz        Quiz?
+  video       Video?
+
+  @@unique([moduleId, orderIndex])
+  @@map("contents")
+}
+
+model Video {
+  id            String   @id @default(cuid())
+  contentId      String   @unique
+  provider       String   @default("local")
+  videoUrl       String
+  durationSecond Int?
+  content        Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("videos")
+}
+
+model Document {
+  id         String  @id @default(cuid())
+  contentId  String  @unique
+  fileUrl    String
+  fileType   String?
+  fileSize   Int?
+  content    Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model Quiz {
+  id          String     @id @default(cuid())
+  contentId    String     @unique
+  title        String
+  timeLimitMin Int?
+  passScore    Decimal    @default(50) @db.Decimal(5, 2)
+  content      Content    @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  questions    Question[]
+
+  @@map("quizzes")
+}
+
+model Question {
+  id         String   @id @default(cuid())
+  quizId      String
+  content     String
+  orderIndex  Int
+  score       Decimal  @default(1) @db.Decimal(5, 2)
+  answers     Answer[]
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, orderIndex])
+  @@map("questions")
+}
+
+model Answer {
+  id          String   @id @default(cuid())
+  questionId   String
+  content      String
+  isCorrect    Boolean  @default(false)
+  orderIndex   Int
+  question     Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, orderIndex])
+  @@map("answers")
+}
+
+model LiveSession {
+  id           String              @id @default(cuid())
+  classId       String
+  title         String
+  description   String?
+  meetingUrl    String?
+  startAt       DateTime
+  endAt         DateTime?
+  createdAt     DateTime            @default(now())
+  class         Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attendances   SessionAttendance[]
+
+  @@map("live_sessions")
+}
+
+model SessionAttendance {
+  sessionId     String
+  userId        String
+  status        AttendanceStatus @default(ABSENT)
+  joinedAt      DateTime?
+  durationMin   Int              @default(0)
+  liveSession   LiveSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, userId])
+  @@map("session_attendance")
+}
