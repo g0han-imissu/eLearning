@@ -17,4 +17,17 @@ const upsertAttendance = ({ sessionId, userId, status, joinedAt, durationMin }) 
     update: { status, joinedAt, durationMin },
   });
 
-module.exports = { findClassById, createLiveSession, findLiveSessionWithClass, upsertAttendance };
+// Lấy danh sách session theo classId, kèm số người tham dự
+const findSessionsByClass = ({ classId, skip, take }) =>
+  prisma.$transaction([
+    prisma.liveSession.findMany({
+      where: { classId },
+      skip,
+      take,
+      orderBy: { startAt: "desc" },
+      include: { _count: { select: { attendances: true } } },
+    }),
+    prisma.liveSession.count({ where: { classId } }),
+  ]);
+
+module.exports = { findClassById, createLiveSession, findLiveSessionWithClass, findSessionsByClass, upsertAttendance };

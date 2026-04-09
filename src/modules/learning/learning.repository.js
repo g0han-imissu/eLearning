@@ -13,4 +13,46 @@ const upsertEnrollment = ({ classId, studentId }) =>
     update: { status: "ENROLLED" },
   });
 
-module.exports = { createProgram, createCourse, createClass, upsertEnrollment };
+// skip = bỏ qua bao nhiêu bản ghi (dùng để nhảy trang)
+// take = lấy bao nhiêu bản ghi (kích thước 1 trang)
+const findPrograms = ({ skip, take }) =>
+  prisma.$transaction([
+    prisma.program.findMany({ skip, take, orderBy: { createdAt: "desc" } }),
+    prisma.program.count(),
+  ]);
+
+const findCourses = ({ skip, take }) =>
+  prisma.$transaction([
+    prisma.course.findMany({
+      skip,
+      take,
+      orderBy: { createdAt: "desc" },
+      include: { program: true },
+    }),
+    prisma.course.count(),
+  ]);
+
+const findClasses = ({ skip, take }) =>
+  prisma.$transaction([
+    prisma.class.findMany({
+      skip,
+      take,
+      orderBy: { createdAt: "desc" },
+      include: {
+        course: true,
+        teacher: { omit: { passwordHash: true } },
+        _count: { select: { enrollments: true } },
+      },
+    }),
+    prisma.class.count(),
+  ]);
+
+module.exports = {
+  createProgram,
+  createCourse,
+  createClass,
+  upsertEnrollment,
+  findPrograms,
+  findCourses,
+  findClasses,
+};

@@ -1,5 +1,18 @@
 const liveService = require("./live.service");
 
+// req.params.classId lấy từ URL: GET /live/sessions/:classId
+const listSessionsByClass = async (req, res, next) => {
+  try {
+    const result = await liveService.listSessionsByClass({
+      classId: req.params.classId,
+      query: req.query,
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const createLiveSession = async (req, res, next) => {
   try {
     const session = await liveService.createLiveSession({ body: req.body, user: req.user });
@@ -18,4 +31,4 @@ const markAttendance = async (req, res, next) => {
   }
 };
 
-module.exports = { createLiveSession, markAttendance };
+module.exports = { listSessionsByClass, createLiveSession, markAttendance };

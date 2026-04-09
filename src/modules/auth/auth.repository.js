@@ -17,6 +17,7 @@ const createUserWithRole = ({ email, passwordHash, fullName, phone, roleId }) =>
       phone,
       roles: { create: { roleId } },
     },
+    omit: { passwordHash: true },
     include: { roles: { include: { role: true } } },
   });
 

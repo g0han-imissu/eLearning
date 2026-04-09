@@ -12,6 +12,7 @@ const authMiddleware = async (req, _res, next) => {
     const payload = jwt.verify(token, jwtSecret);
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
+      omit: { passwordHash: true },
       include: { roles: { include: { role: true } } },
     });
 

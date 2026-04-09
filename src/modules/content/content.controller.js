@@ -1,5 +1,14 @@
 const contentService = require("./content.service");
 
+const listLectures = async (req, res, next) => {
+  try {
+    const result = await contentService.listLectures(req.query);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const createLecture = async (req, res, next) => {
   try {
     const lecture = await contentService.createLecture({ body: req.body, user: req.user });
@@ -27,4 +36,4 @@ const createContent = async (req, res, next) => {
   }
 };
 
-module.exports = { createLecture, createModule, createContent };
+module.exports = { listLectures, createLecture, createModule, createContent };

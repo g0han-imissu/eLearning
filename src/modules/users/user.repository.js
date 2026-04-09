@@ -2,6 +2,7 @@ const prisma = require("../../lib/prisma");
 
 const findUsers = () =>
   prisma.user.findMany({
+    omit: { passwordHash: true },
     include: { roles: { include: { role: true } } },
     orderBy: { createdAt: "desc" },
   });
