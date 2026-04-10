@@ -11,8 +11,12 @@ const updateStatusById = (id, status) => prisma.user.update({ where: { id }, dat
 
 const findRolesByNames = (roleNames) => prisma.role.findMany({ where: { name: { in: roleNames } } });
 
-const clearUserRoles = (userId) => prisma.userRole.deleteMany({ where: { userId } });
+// Xóa toàn bộ role cũ và gán role mới trong 1 transaction
+// Nếu tạo role mới lỗi → xóa cũng bị hoàn tác, user không mất role
+const replaceUserRoles = (userId, rows) =>
+  prisma.$transaction(async (tx) => {
+    await tx.userRole.deleteMany({ where: { userId } });
+    await tx.userRole.createMany({ data: rows, skipDuplicates: true });
+  });
 
-const createUserRoles = (rows) => prisma.userRole.createMany({ data: rows, skipDuplicates: true });
-
-module.exports = { findUsers, updateStatusById, findRolesByNames, clearUserRoles, createUserRoles };
+module.exports = { findUsers, updateStatusById, findRolesByNames, replaceUserRoles };

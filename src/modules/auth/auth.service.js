@@ -2,7 +2,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const ApiError = require("../../utils/apiError");
 const { jwtSecret, jwtExpiresIn } = require("../../config/env");
-const { findUserByEmail, findRoleByName, createUserWithRole } = require("./auth.repository");
+const { findUserByEmail, findRoleByName, registerUser } = require("./auth.repository");
 
 const signToken = (userId) => jwt.sign({ userId }, jwtSecret, { expiresIn: jwtExpiresIn });
 
@@ -14,7 +14,7 @@ const register = async ({ email, password, fullName, phone }) => {
   if (!studentRole) throw new ApiError(500, "Missing STUDENT role");
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await createUserWithRole({ email, passwordHash, fullName, phone, roleId: studentRole.id });
+  const user = await registerUser({ email, passwordHash, fullName, phone, roleId: studentRole.id });
 
   return {
     message: "Register success, waiting admin approval",
