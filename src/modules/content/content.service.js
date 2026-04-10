@@ -13,8 +13,20 @@ const listLectures = async (query) => {
   return { data: lectures, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
 };
 
-const createLecture = ({ body, user }) =>
-  contentRepository.createLecture({ ...body, ownerId: user.id });
+const createLecture = async ({ body, user }) => {
+  const isAdmin = user.roles.includes("ADMIN");
+
+  // ADMIN tạo được cho bất kỳ course nào
+  // TEACHER chỉ được tạo cho course thuộc lớp mình đang dạy
+  if (!isAdmin) {
+    const assignedClass = await contentRepository.findClassByTeacherAndCourse(user.id, body.courseId);
+    if (!assignedClass) {
+      throw new ApiError(403, "You can only create lectures for courses you are assigned to teach");
+    }
+  }
+
+  return contentRepository.createLecture({ ...body, ownerId: user.id });
+};
 
 const createModule = async ({ body, user }) => {
   const lecture = await contentRepository.findLectureById(body.lectureId);

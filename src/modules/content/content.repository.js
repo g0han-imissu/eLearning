@@ -22,6 +22,10 @@ const findLectures = ({ skip, take }) =>
     prisma.lecture.count(),
   ]);
 
+// Kiểm tra teacher có đang dạy ít nhất 1 lớp của course này không
+const findClassByTeacherAndCourse = (teacherId, courseId) =>
+  prisma.class.findFirst({ where: { teacherId, courseId } });
+
 const createModule = (data) => prisma.module.create({ data });
 
 const findModuleWithLecture = (id) =>
@@ -53,6 +57,7 @@ module.exports = {
   createLecture,
   findLectureById,
   findLectures,
+  findClassByTeacherAndCourse,
   createModule,
   findModuleWithLecture,
   createContentWithMedia,
