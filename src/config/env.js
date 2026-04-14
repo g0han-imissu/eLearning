@@ -20,3 +20,6 @@ export const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
 export const emailPort = Number(process.env.EMAIL_PORT || 587);
 export const emailUser = process.env.EMAIL_USER || "";
 export const emailPass = process.env.EMAIL_PASS || "";
+
+export const agoraAppId = process.env.AGORA_APP_ID || "";
+export const agoraAppCertificate = process.env.AGORA_APP_CERTIFICATE || "";

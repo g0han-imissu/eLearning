@@ -292,6 +292,7 @@ model SessionAttendance {
   status        AttendanceStatus @default(ABSENT)
   joinedAt      DateTime?
   durationMin   Int              @default(0)
+  agoraUid      Int?
   liveSession   LiveSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 

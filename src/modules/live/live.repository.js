@@ -7,11 +7,16 @@ export const createLiveSession = (data) => prisma.liveSession.create({ data });
 export const findLiveSessionWithClass = (id) =>
   prisma.liveSession.findUnique({ where: { id }, include: { class: true } });
 
-export const upsertAttendance = ({ sessionId, userId, status, joinedAt, durationMin }) =>
+export const upsertAttendance = ({ sessionId, userId, status, joinedAt, durationMin, agoraUid }) =>
   prisma.sessionAttendance.upsert({
     where: { sessionId_userId: { sessionId, userId } },
-    create: { sessionId, userId, status, joinedAt, durationMin },
-    update: { status, joinedAt, durationMin },
+    create: { sessionId, userId, status, joinedAt, durationMin, agoraUid },
+    update: { status, joinedAt, durationMin, agoraUid },
+  });
+
+export const findEnrollmentByClassAndStudent = (classId, studentId) =>
+  prisma.enrollment.findUnique({
+    where: { classId_studentId: { classId, studentId } },
   });
 
 export const findSessionsByClass = ({ classId, skip, take }) =>
