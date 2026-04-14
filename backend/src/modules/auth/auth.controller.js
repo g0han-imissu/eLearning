@@ -91,3 +91,13 @@ export const updateProfile = async (req, res, next) => {
     return next(error);
   }
 };
+
+export const verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.query;
+    const result = await authService.verifyEmail({ token });
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};

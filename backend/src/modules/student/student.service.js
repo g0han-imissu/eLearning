@@ -1,6 +1,25 @@
 import ApiError from "../../utils/apiError.js";
 import * as repo from "./student.repository.js";
 
+export const myEnrollments = (userId) => repo.findMyEnrollments(userId);
+
+export const joinByCode = async ({ code, userId }) => {
+  const classItem = await repo.findClassByCode(code);
+  if (!classItem) throw new ApiError(404, "Không tìm thấy lớp học với mã này");
+  if (classItem.status === 'CLOSED' || classItem.status === 'ARCHIVED') {
+    throw new ApiError(400, "Lớp học này không còn nhận thêm học viên");
+  }
+
+  const existing = await repo.findEnrollment(classItem.id, userId);
+  if (existing) {
+    if (existing.status === 'PENDING') throw new ApiError(400, "Bạn đã gửi yêu cầu tham gia lớp này, đang chờ phê duyệt");
+    if (existing.status !== 'DROPPED') throw new ApiError(400, "Bạn đã là thành viên của lớp học này");
+  }
+
+  await repo.requestJoinClass(classItem.id, userId);
+  return { message: "Yêu cầu tham gia lớp đã được gửi. Vui lòng chờ giảng viên phê duyệt.", classTitle: classItem.title };
+};
+
 export const me = (userId) => repo.findMe(userId);
 
 export const myProgress = async (userId) => {

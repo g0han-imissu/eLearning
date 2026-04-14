@@ -20,6 +20,7 @@ enum ClassStatus {
 }
 
 enum EnrollmentStatus {
+  PENDING
   ENROLLED
   IN_PROGRESS
   COMPLETED
@@ -53,8 +54,9 @@ model User {
   ownedLectures  Lecture[]
   roles          UserRole[]
   attendances    SessionAttendance[]
-  refreshTokens  RefreshToken[]
-  passwordOtp    PasswordOtp?
+  refreshTokens      RefreshToken[]
+  passwordOtp        PasswordOtp?
+  emailVerification  EmailVerification?
 
   @@map("users")
 }
@@ -284,6 +286,17 @@ model PasswordOtp {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("password_otps")
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verifications")
 }
 
 model SessionAttendance {

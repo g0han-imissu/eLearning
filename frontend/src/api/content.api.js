@@ -8,10 +8,12 @@ export const updateLecture = (id, data) => api.patch(`/content/lectures/${id}`, 
 export const deleteLecture = (id) => api.delete(`/content/lectures/${id}`);
 
 // Modules
+export const getModule = (id) => api.get(`/content/modules/${id}`);
 export const createModule = (data) => api.post('/content/modules', data);
 export const updateModule = (id, data) => api.patch(`/content/modules/${id}`, data);
 export const deleteModule = (id) => api.delete(`/content/modules/${id}`);
 
 // Contents
+export const getContent = (id) => api.get(`/content/contents/${id}`);
 export const createContent = (data) => api.post('/content/contents', data);
 export const deleteContent = (id) => api.delete(`/content/contents/${id}`);

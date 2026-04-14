@@ -9,7 +9,10 @@ const parsePagination = (query) => {
 
 export const listLectures = async (query) => {
   const { skip, take, page, limit } = parsePagination(query);
-  const [lectures, total] = await repo.findLectures({ skip, take });
+  const where = {};
+  if (query.courseId) where.courseId = query.courseId;
+  if (query.ownerId) where.ownerId = query.ownerId;
+  const [lectures, total] = await repo.findLectures({ skip, take, where });
   return { data: lectures, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
 };
 

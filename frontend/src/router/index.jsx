@@ -3,6 +3,7 @@ import useAuthStore from '../stores/authStore';
 
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
+import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
 
 import AdminLayout from '../components/layout/AdminLayout';
 import TeacherLayout from '../components/layout/TeacherLayout';
@@ -40,6 +41,7 @@ function RequireRole({ role, children }) {
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  { path: '/verify-email', element: <VerifyEmailPage /> },
 
   {
     path: '/admin',

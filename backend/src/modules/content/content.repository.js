@@ -4,21 +4,27 @@ export const createLecture = (data) => prisma.lecture.create({ data });
 
 export const findLectureById = (id) => prisma.lecture.findUnique({ where: { id } });
 
-export const findLectures = ({ skip, take }) =>
+export const findLectures = ({ skip, take, where = {} }) =>
   prisma.$transaction([
     prisma.lecture.findMany({
       skip, take,
+      where,
       orderBy: { createdAt: "desc" },
       include: {
         course: true,
         owner: { omit: { passwordHash: true } },
         modules: {
           orderBy: { orderIndex: "asc" },
-          include: { contents: { orderBy: { orderIndex: "asc" } } },
+          include: {
+            contents: {
+              orderBy: { orderIndex: "asc" },
+              include: { video: true, document: true, quiz: true },
+            },
+          },
         },
       },
     }),
-    prisma.lecture.count(),
+    prisma.lecture.count({ where }),
   ]);
 
 export const findClassByTeacherAndCourse = (teacherId, courseId) =>

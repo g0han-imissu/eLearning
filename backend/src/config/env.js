@@ -23,3 +23,5 @@ export const emailPass = process.env.EMAIL_PASS || "";
 
 export const agoraAppId = process.env.AGORA_APP_ID || "";
 export const agoraAppCertificate = process.env.AGORA_APP_CERTIFICATE || "";
+
+export const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";

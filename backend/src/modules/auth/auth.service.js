@@ -2,15 +2,17 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import ApiError from "../../utils/apiError.js";
-import { jwtSecret, jwtExpiresIn, refreshTokenExpiresInDays } from "../../config/env.js";
+import { jwtSecret, jwtExpiresIn, refreshTokenExpiresInDays, clientUrl } from "../../config/env.js";
 import {
   findUserByEmail, findUserById, updateUser,
   findRoleByName, registerUser,
   saveRefreshToken, findRefreshToken, deleteRefreshToken,
   deleteAllRefreshTokensByUser, deleteExpiredRefreshTokens,
   upsertPasswordOtp, findPasswordOtp, deletePasswordOtp,
+  upsertEmailVerification, findEmailVerificationByToken,
+  deleteEmailVerification, activateUser,
 } from "./auth.repository.js";
-import { sendOtpEmail } from "../../lib/email.js";
+import { sendOtpEmail, sendVerificationEmail } from "../../lib/email.js";
 
 const signAccessToken = (userId) => jwt.sign({ userId }, jwtSecret, { expiresIn: jwtExpiresIn });
 
@@ -32,10 +34,35 @@ export const register = async ({ email, password, fullName, phone }) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await registerUser({ email, passwordHash, fullName, phone, roleId: studentRole.id });
 
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  await upsertEmailVerification({ userId: user.id, token, expiresAt });
+
+  const verifyUrl = `${clientUrl}/verify-email?token=${token}`;
+  await sendVerificationEmail({ to: email, verifyUrl }).catch(() => {});
+
   return {
-    message: "Register success, waiting admin approval",
+    message: "Đăng ký thành công. Vui lòng kiểm tra email để xác nhận tài khoản.",
     user: { id: user.id, email: user.email, status: user.status },
   };
+};
+
+export const verifyEmail = async ({ token }) => {
+  if (!token) throw new ApiError(400, "Missing token");
+
+  const record = await findEmailVerificationByToken(token);
+  if (!record) throw new ApiError(400, "Liên kết xác nhận không hợp lệ hoặc đã được sử dụng.");
+  if (record.expiresAt < new Date()) {
+    await deleteEmailVerification(record.userId);
+    throw new ApiError(400, "Liên kết xác nhận đã hết hạn. Vui lòng đăng ký lại.");
+  }
+
+  if (record.user.status !== "ACTIVE") {
+    await activateUser(record.userId);
+  }
+  await deleteEmailVerification(record.userId);
+
+  return { message: "Tài khoản đã được xác nhận. Bạn có thể đăng nhập ngay bây giờ." };
 };
 
 export const login = async ({ email, password }) => {

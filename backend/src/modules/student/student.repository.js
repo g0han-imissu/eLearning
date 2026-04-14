@@ -20,3 +20,20 @@ export const findEnrollment = (classId, studentId) =>
 
 export const updateEnrollmentProgress = (classId, studentId, data) =>
   prisma.enrollment.update({ where: { classId_studentId: { classId, studentId } }, data });
+
+export const findClassByCode = (code) =>
+  prisma.class.findUnique({ where: { code }, include: { course: true, teacher: { select: { id: true, fullName: true } } } });
+
+export const requestJoinClass = (classId, studentId) =>
+  prisma.enrollment.upsert({
+    where: { classId_studentId: { classId, studentId } },
+    update: {},
+    create: { classId, studentId, status: 'PENDING' },
+  });
+
+export const findMyEnrollments = (studentId) =>
+  prisma.enrollment.findMany({
+    where: { studentId, status: { not: 'DROPPED' } },
+    include: { class: { include: { course: true, teacher: { select: { id: true, fullName: true } } } } },
+    orderBy: { createdAt: 'desc' },
+  });

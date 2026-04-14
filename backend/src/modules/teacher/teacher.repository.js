@@ -19,3 +19,16 @@ export const findEnrollmentsByClass = (classId) =>
     include: { student: { select: { id: true, email: true, fullName: true, status: true, createdAt: true } } },
     orderBy: { createdAt: "desc" },
   });
+
+export const findPendingRequests = (classId) =>
+  prisma.enrollment.findMany({
+    where: { classId, status: 'PENDING' },
+    include: { student: { select: { id: true, email: true, fullName: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+
+export const updateEnrollmentStatus = (classId, studentId, status) =>
+  prisma.enrollment.update({
+    where: { classId_studentId: { classId, studentId } },
+    data: { status },
+  });

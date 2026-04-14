@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { MailCheck } from 'lucide-react';
 import { register as registerApi } from '../../api/auth.api';
 
 export default function RegisterPage() {
-  const navigate = useNavigate();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   const { register, handleSubmit, formState: { errors } } = useForm();
 
@@ -15,13 +17,31 @@ export default function RegisterPage() {
     setError('');
     try {
       await registerApi(data);
-      navigate('/login', { state: { message: 'Đăng ký thành công. Chờ admin kích hoạt tài khoản.' } });
+      setRegisteredEmail(data.email);
+      setDone(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký thất bại');
     } finally {
       setLoading(false);
     }
   };
+
+  if (done) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MailCheck size={32} className="text-green-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Kiểm tra email của bạn</h2>
+          <p className="text-gray-500 text-sm mb-1">Chúng tôi đã gửi link xác nhận đến</p>
+          <p className="font-semibold text-gray-800 mb-4">{registeredEmail}</p>
+          <p className="text-gray-400 text-xs mb-6">Nhấn vào link trong email để kích hoạt tài khoản. Link có hiệu lực trong 24 giờ.</p>
+          <Link to="/login" className="text-indigo-600 hover:underline text-sm font-medium">Quay lại đăng nhập</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">

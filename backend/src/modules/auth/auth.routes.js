@@ -3,12 +3,13 @@ import authMiddleware from "../../middlewares/auth.middleware.js";
 import {
   register, login, refresh, logout,
   requestChangePassword, confirmChangePassword,
-  updateProfile,
+  updateProfile, verifyEmail,
 } from "./auth.controller.js";
 
 const router = Router();
 
 router.post("/register", register);
+router.get("/verify-email", verifyEmail);
 router.post("/login", login);
 router.post("/refresh", refresh);
 router.post("/logout", authMiddleware, logout);

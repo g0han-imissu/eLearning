@@ -1,27 +1,40 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { getCourses, createCourse, updateCourse, deleteCourse } from '../../api/learning.api';
-import { getPrograms } from '../../api/learning.api';
+import { Plus, Pencil, Trash2, ChevronRight, School } from 'lucide-react';
+import { getCourses, getCourse, createCourse, updateCourse, deleteCourse, getPrograms } from '../../api/learning.api';
 import Modal from '../../components/ui/Modal';
 import Confirm from '../../components/ui/Confirm';
+import Badge from '../../components/ui/Badge';
 import { Button, Input, Textarea, Select } from '../../components/ui/FormField';
+
+const statusVariant = { DRAFT: 'gray', OPEN: 'green', CLOSED: 'red', ARCHIVED: 'yellow' };
 
 export default function CoursesPage() {
   const [items, setItems] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [modal, setModal] = useState(null);
   const [confirm, setConfirm] = useState(null);
+  const [detailModal, setDetailModal] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [form, setForm] = useState({ code: '', title: '', description: '', programId: '' });
   const [loading, setLoading] = useState(false);
 
   const load = () => {
-    getCourses().then(r => setItems(r.data.data || []));
-    getPrograms().then(r => setPrograms(r.data.data || []));
+    getCourses({ limit: 100 }).then(r => setItems(r.data.data || []));
+    getPrograms({ limit: 100 }).then(r => setPrograms(r.data.data || []));
   };
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setForm({ code: '', title: '', description: '', programId: programs[0]?.id || '' }); setModal('create'); };
   const openEdit = (item) => { setForm({ code: item.code, title: item.title, description: item.description || '', programId: item.programId }); setModal(item); };
+
+  const openDetail = async (item) => {
+    setDetailLoading(true);
+    setDetailModal({ course: item, classes: [] });
+    try {
+      const r = await getCourse(item.id);
+      setDetailModal({ course: r.data, classes: r.data.classes || [] });
+    } finally { setDetailLoading(false); }
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -52,7 +65,16 @@ export default function CoursesPage() {
                 <td className="px-4 py-3 font-mono text-xs text-indigo-600">{c.code}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">{c.title}</td>
                 <td className="px-4 py-3 text-gray-500">{c.program?.title || '—'}</td>
-                <td className="px-4 py-3 text-gray-500">{c._count?.classes ?? 0}</td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => openDetail(c)}
+                    className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs font-medium"
+                  >
+                    <School size={13} />
+                    {c._count?.classes ?? 0} lớp
+                    <ChevronRight size={12} />
+                  </button>
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     <button onClick={() => openEdit(c)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><Pencil size={14} /></button>
@@ -65,6 +87,7 @@ export default function CoursesPage() {
         </table>
       </div>
 
+      {/* Edit/Create modal */}
       {modal && (
         <Modal title={modal === 'create' ? 'Thêm môn học' : 'Sửa môn học'} onClose={() => setModal(null)} size="sm">
           <div className="space-y-3">
@@ -83,6 +106,29 @@ export default function CoursesPage() {
               <Button onClick={handleSave} disabled={loading}>{loading ? 'Đang lưu...' : 'Lưu'}</Button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* Detail modal - classes list */}
+      {detailModal && (
+        <Modal title={`Lớp học — ${detailModal.course.title}`} onClose={() => setDetailModal(null)}>
+          {detailLoading ? (
+            <p className="text-gray-400 text-sm py-4 text-center">Đang tải...</p>
+          ) : detailModal.classes.length === 0 ? (
+            <p className="text-gray-400 text-sm py-6 text-center">Môn học này chưa có lớp nào.</p>
+          ) : (
+            <div className="space-y-2">
+              {detailModal.classes.map(cls => (
+                <div key={cls.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                  <div>
+                    <span className="text-xs font-mono text-indigo-600 mr-2">{cls.code}</span>
+                    <span className="text-sm font-medium text-gray-800">{cls.title}</span>
+                  </div>
+                  <Badge variant={statusVariant[cls.status] || 'gray'}>{cls.status}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </Modal>
       )}
 

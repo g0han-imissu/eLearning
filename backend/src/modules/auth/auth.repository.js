@@ -57,3 +57,19 @@ export const findPasswordOtp = (userId) =>
 
 export const deletePasswordOtp = (userId) =>
   prisma.passwordOtp.delete({ where: { userId } });
+
+export const upsertEmailVerification = ({ userId, token, expiresAt }) =>
+  prisma.emailVerification.upsert({
+    where: { userId },
+    update: { token, expiresAt, createdAt: new Date() },
+    create: { userId, token, expiresAt },
+  });
+
+export const findEmailVerificationByToken = (token) =>
+  prisma.emailVerification.findUnique({ where: { token }, include: { user: true } });
+
+export const deleteEmailVerification = (userId) =>
+  prisma.emailVerification.delete({ where: { userId } }).catch(() => {});
+
+export const activateUser = (userId) =>
+  prisma.user.update({ where: { id: userId }, data: { status: 'ACTIVE' } });

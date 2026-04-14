@@ -1,21 +1,41 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, Play, FileText, ClipboardList, CheckCircle, ExternalLink } from 'lucide-react';
-import api from '../../api/axios';
-import { submitQuiz } from '../../api/student.api';
+import { ChevronRight, Play, FileText, ClipboardList, ExternalLink } from 'lucide-react';
+import { getClass } from '../../api/learning.api';
+import { getLectures, getContent } from '../../api/content.api';
+import { submitQuiz, updateProgress } from '../../api/student.api';
 
 const typeIcon = { VIDEO: Play, DOCUMENT: FileText, QUIZ: ClipboardList };
 const typeColor = { VIDEO: 'bg-blue-100 text-blue-600', DOCUMENT: 'bg-orange-100 text-orange-600', QUIZ: 'bg-purple-100 text-purple-600' };
 
-function VideoPlayer({ content }) {
+function VideoPlayer({ content, classId, onWatched }) {
+  const videoRef = useRef(null);
+  const reported = useRef(false);
+
+  const handleTimeUpdate = () => {
+    if (reported.current) return;
+    const v = videoRef.current;
+    if (v && v.duration > 0 && v.currentTime / v.duration > 0.8) {
+      reported.current = true;
+      onWatched?.();
+    }
+  };
+
   return (
     <div className="bg-black rounded-xl overflow-hidden aspect-video">
-      <video src={content.video?.videoUrl} controls className="w-full h-full" />
+      <video
+        ref={videoRef}
+        src={content.video?.videoUrl}
+        controls
+        className="w-full h-full"
+        onTimeUpdate={handleTimeUpdate}
+      />
     </div>
   );
 }
 
-function DocumentViewer({ content }) {
+function DocumentViewer({ content, onViewed }) {
+  useEffect(() => { onViewed?.(); }, []);
   const url = content.document?.fileUrl;
   const isPdf = content.document?.fileType?.includes('pdf') || url?.endsWith('.pdf');
   return (
@@ -23,7 +43,7 @@ function DocumentViewer({ content }) {
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-900">{content.title}</h3>
         <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm text-indigo-600 hover:underline">
-          <ExternalLink size={14} /> Mở trong tab mới
+          <ExternalLink size={14} />Mở trong tab mới
         </a>
       </div>
       {isPdf ? (
@@ -38,7 +58,7 @@ function DocumentViewer({ content }) {
   );
 }
 
-function QuizTaker({ content, classId }) {
+function QuizTaker({ content, classId, onCompleted }) {
   const quiz = content.quiz;
   const [selected, setSelected] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -55,13 +75,14 @@ function QuizTaker({ content, classId }) {
     try {
       const res = await submitQuiz({ quizId: quiz.id, classId, answers });
       setResult(res.data);
+      onCompleted?.();
     } catch {
-      // fallback local scoring
       let correct = 0;
       quiz.questions.forEach((q, qi) => {
         if (selected[qi] !== undefined && q.answers[selected[qi]]?.isCorrect) correct++;
       });
-      setResult({ scorePercent: Math.round(correct / quiz.questions.length * 100), passed: correct / quiz.questions.length >= 0.5 });
+      const scorePercent = Math.round(correct / quiz.questions.length * 100);
+      setResult({ scorePercent, passed: scorePercent >= 50 });
     }
     setSubmitted(true);
   };
@@ -72,6 +93,9 @@ function QuizTaker({ content, classId }) {
         <span className={`text-2xl font-bold ${result.passed ? 'text-green-600' : 'text-red-600'}`}>{result.scorePercent}%</span>
       </div>
       <p className={`font-bold text-lg ${result.passed ? 'text-green-700' : 'text-red-700'}`}>{result.passed ? 'Đạt!' : 'Chưa đạt'}</p>
+      {result.earnedScore !== undefined && (
+        <p className="text-sm text-gray-500 mt-1">{result.earnedScore}/{result.totalScore} điểm</p>
+      )}
       <button onClick={() => { setSubmitted(false); setSelected({}); setResult(null); }}
         className="mt-4 text-sm text-indigo-600 hover:underline">Làm lại</button>
     </div>
@@ -80,6 +104,7 @@ function QuizTaker({ content, classId }) {
   return (
     <div className="bg-white rounded-xl border p-6 space-y-5">
       <h3 className="font-bold text-gray-900">{quiz.title}</h3>
+      {quiz.timeLimitMin && <p className="text-xs text-gray-400">Thời gian: {quiz.timeLimitMin} phút</p>}
       {quiz.questions?.map((q, qi) => (
         <div key={q.id}>
           <p className="text-sm font-medium text-gray-800 mb-2.5">
@@ -109,45 +134,94 @@ export default function StudentLecturePage() {
   const [lectures, setLectures] = useState([]);
   const [selectedLecture, setSelectedLecture] = useState(null);
   const [selectedContent, setSelectedContent] = useState(null);
+  const [contentDetail, setContentDetail] = useState(null); // full content with media from API
+  const [contentLoading, setContentLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [completedIds, setCompletedIds] = useState(new Set());
+  const totalContents = useRef(0);
 
   useEffect(() => {
-    api.get(`/learning/classes/${classId}`).then(r => {
+    getClass(classId).then(r => {
       const cls = r.data;
-      return api.get('/content/lectures', { params: { courseId: cls.courseId } });
+      return getLectures({ courseId: cls.courseId, limit: 100 });
     }).then(r => {
       const data = r.data.data || [];
       setLectures(data);
       if (data[0]) setSelectedLecture(data[0]);
+      // count total contents for progress
+      let total = 0;
+      data.forEach(lec => lec.modules?.forEach(mod => { total += mod.contents?.length || 0; }));
+      totalContents.current = total;
     }).finally(() => setLoading(false));
   }, [classId]);
 
+  // When content is selected, fetch full detail (includes video/document/quiz)
+  const handleSelectContent = async (c) => {
+    setSelectedContent(c);
+    setContentLoading(true);
+    try {
+      const r = await getContent(c.id);
+      setContentDetail(r.data);
+    } catch {
+      setContentDetail(c); // fallback to existing data
+    } finally { setContentLoading(false); }
+  };
+
+  const markDone = async (contentId) => {
+    if (completedIds.has(contentId)) return;
+    const next = new Set(completedIds);
+    next.add(contentId);
+    setCompletedIds(next);
+    if (totalContents.current > 0) {
+      const progress = Math.round((next.size / totalContents.current) * 100);
+      await updateProgress({ classId, progress }).catch(() => {});
+    }
+  };
+
   if (loading) return <div className="p-6 text-gray-400 text-sm">Đang tải...</div>;
+
+  const displayContent = contentDetail || selectedContent;
 
   return (
     <div className="flex gap-5 h-[calc(100vh-120px)]">
       {/* Sidebar */}
       <div className="w-72 bg-white rounded-xl border border-gray-100 overflow-y-auto flex-shrink-0">
-        <div className="p-4 border-b"><h2 className="font-semibold text-sm text-gray-900">Nội dung học</h2></div>
+        <div className="p-4 border-b">
+          <h2 className="font-semibold text-sm text-gray-900">Nội dung học</h2>
+          {totalContents.current > 0 && (
+            <div className="mt-2">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>{completedIds.size}/{totalContents.current} hoàn thành</span>
+                <span>{Math.round(completedIds.size / totalContents.current * 100)}%</span>
+              </div>
+              <div className="h-1 bg-gray-100 rounded-full">
+                <div className="h-1 bg-indigo-500 rounded-full transition-all" style={{ width: `${Math.round(completedIds.size / totalContents.current * 100)}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+
         {lectures.map(lec => (
           <div key={lec.id}>
             <button onClick={() => setSelectedLecture(lec)}
               className={`w-full text-left px-4 py-3 text-sm font-medium flex items-center justify-between hover:bg-gray-50 ${selectedLecture?.id === lec.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'}`}>
-              <span>{lec.title}</span><ChevronRight size={14} />
+              <span className="truncate flex-1">{lec.title}</span>
+              <ChevronRight size={14} className="flex-shrink-0" />
             </button>
             {selectedLecture?.id === lec.id && lec.modules?.map(mod => (
               <div key={mod.id} className="bg-gray-50">
                 <p className="px-5 py-1.5 text-xs font-medium text-gray-500 uppercase">{mod.title}</p>
                 {mod.contents?.map(c => {
                   const Icon = typeIcon[c.type] || FileText;
-                  const done = selectedContent?.id === c.id;
+                  const active = selectedContent?.id === c.id;
+                  const done = completedIds.has(c.id);
                   return (
-                    <button key={c.id} onClick={() => setSelectedContent(c)}
-                      className={`w-full flex items-center gap-2.5 px-5 py-2.5 text-xs hover:bg-gray-100 transition-colors ${done ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}>
-                      <span className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${done ? 'bg-indigo-100' : 'bg-white border'}`}>
-                        <Icon size={11} className={done ? 'text-indigo-600' : 'text-gray-400'} />
+                    <button key={c.id} onClick={() => handleSelectContent(c)}
+                      className={`w-full flex items-center gap-2.5 px-5 py-2.5 text-xs hover:bg-gray-100 transition-colors ${active ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}>
+                      <span className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${done ? 'bg-green-100' : active ? 'bg-indigo-100' : 'bg-white border'}`}>
+                        <Icon size={11} className={done ? 'text-green-600' : active ? 'text-indigo-600' : 'text-gray-400'} />
                       </span>
-                      <span className="flex-1 text-left">{c.title}</span>
+                      <span className="flex-1 text-left truncate">{c.title}</span>
                     </button>
                   );
                 })}
@@ -159,15 +233,23 @@ export default function StudentLecturePage() {
 
       {/* Content area */}
       <div className="flex-1 overflow-y-auto">
-        {selectedContent ? (
+        {contentLoading ? (
+          <div className="flex items-center justify-center h-full text-gray-300 text-sm">Đang tải nội dung...</div>
+        ) : displayContent ? (
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeColor[selectedContent.type]}`}>{selectedContent.type}</span>
-              <h2 className="font-bold text-gray-900">{selectedContent.title}</h2>
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeColor[displayContent.type]}`}>{displayContent.type}</span>
+              <h2 className="font-bold text-gray-900">{displayContent.title}</h2>
             </div>
-            {selectedContent.type === 'VIDEO' && <VideoPlayer content={selectedContent} />}
-            {selectedContent.type === 'DOCUMENT' && <DocumentViewer content={selectedContent} />}
-            {selectedContent.type === 'QUIZ' && <QuizTaker content={selectedContent} classId={classId} />}
+            {displayContent.type === 'VIDEO' && (
+              <VideoPlayer content={displayContent} classId={classId} onWatched={() => markDone(displayContent.id)} />
+            )}
+            {displayContent.type === 'DOCUMENT' && (
+              <DocumentViewer content={displayContent} onViewed={() => markDone(displayContent.id)} />
+            )}
+            {displayContent.type === 'QUIZ' && (
+              <QuizTaker content={displayContent} classId={classId} onCompleted={() => markDone(displayContent.id)} />
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-300">
