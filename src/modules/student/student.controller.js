@@ -1,21 +1,14 @@
-const studentService = require("./student.service");
+import * as studentService from "./student.service.js";
 
-const me = async (req, res, next) => {
-  try {
-    const user = await studentService.me(req.user.id);
-    res.json(user);
-  } catch (error) {
-    next(error);
-  }
+export const me = async (req, res, next) => {
+  try { res.json(await studentService.me(req.user.id)); } catch (e) { next(e); }
 };
-
-const myProgress = async (req, res, next) => {
-  try {
-    const result = await studentService.myProgress(req.user.id);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+export const myProgress = async (req, res, next) => {
+  try { res.json(await studentService.myProgress(req.user.id)); } catch (e) { next(e); }
 };
-
-module.exports = { me, myProgress };
+export const submitQuiz = async (req, res, next) => {
+  try { res.json(await studentService.submitQuiz({ body: req.body, userId: req.user.id })); } catch (e) { next(e); }
+};
+export const updateProgress = async (req, res, next) => {
+  try { res.json(await studentService.updateProgress({ body: req.body, userId: req.user.id })); } catch (e) { next(e); }
+};

@@ -1,4 +1,4 @@
-const ApiError = require("../utils/apiError");
+import ApiError from "../utils/apiError.js";
 
 const requireRoles = (...allowedRoles) => (req, _res, next) => {
   const userRoles = req.user?.roles || [];
@@ -7,4 +7,4 @@ const requireRoles = (...allowedRoles) => (req, _res, next) => {
   return next();
 };
 
-module.exports = requireRoles;
+export default requireRoles;

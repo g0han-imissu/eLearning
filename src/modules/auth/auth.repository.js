@@ -1,16 +1,24 @@
-const prisma = require("../../lib/prisma");
+import prisma from "../../lib/prisma.js";
 
-const findUserByEmail = (email) =>
+export const findUserByEmail = (email) =>
   prisma.user.findUnique({
     where: { email },
     include: { roles: { include: { role: true } } },
   });
 
-const findRoleByName = (name) => prisma.role.findUnique({ where: { name } });
+export const findUserById = (id) =>
+  prisma.user.findUnique({ where: { id } });
 
-// Tạo user và gán role trong 1 transaction
-// Nếu gán role lỗi → user cũng bị hoàn tác, không để lại user không có role
-const registerUser = ({ email, passwordHash, fullName, phone, roleId }) =>
+export const updateUser = (id, data) =>
+  prisma.user.update({
+    where: { id },
+    data,
+    omit: { passwordHash: true },
+  });
+
+export const findRoleByName = (name) => prisma.role.findUnique({ where: { name } });
+
+export const registerUser = ({ email, passwordHash, fullName, phone, roleId }) =>
   prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: { email, passwordHash, fullName, phone },
@@ -19,4 +27,33 @@ const registerUser = ({ email, passwordHash, fullName, phone, roleId }) =>
     return user;
   });
 
-module.exports = { findUserByEmail, findRoleByName, registerUser };
+export const saveRefreshToken = ({ userId, token, expiresAt }) =>
+  prisma.refreshToken.create({ data: { userId, token, expiresAt } });
+
+export const findRefreshToken = (token) =>
+  prisma.refreshToken.findUnique({
+    where: { token },
+    include: { user: { include: { roles: { include: { role: true } } } } },
+  });
+
+export const deleteRefreshToken = (token) =>
+  prisma.refreshToken.delete({ where: { token } });
+
+export const deleteAllRefreshTokensByUser = (userId) =>
+  prisma.refreshToken.deleteMany({ where: { userId } });
+
+export const deleteExpiredRefreshTokens = () =>
+  prisma.refreshToken.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+
+export const upsertPasswordOtp = ({ userId, otp, expiresAt }) =>
+  prisma.passwordOtp.upsert({
+    where: { userId },
+    update: { otp, expiresAt, createdAt: new Date() },
+    create: { userId, otp, expiresAt },
+  });
+
+export const findPasswordOtp = (userId) =>
+  prisma.passwordOtp.findUnique({ where: { userId } });
+
+export const deletePasswordOtp = (userId) =>
+  prisma.passwordOtp.delete({ where: { userId } });

@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum UserStatus {
@@ -49,11 +48,13 @@ model User {
   status        UserStatus   @default(PENDING)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
-  taughtClasses Class[]      @relation("TeacherClasses")
-  enrollments   Enrollment[]
-  ownedLectures Lecture[]
-  roles         UserRole[]
-  attendances   SessionAttendance[]
+  taughtClasses  Class[]         @relation("TeacherClasses")
+  enrollments    Enrollment[]
+  ownedLectures  Lecture[]
+  roles          UserRole[]
+  attendances    SessionAttendance[]
+  refreshTokens  RefreshToken[]
+  passwordOtp    PasswordOtp?
 
   @@map("users")
 }
@@ -261,6 +262,28 @@ model LiveSession {
   attendances   SessionAttendance[]
 
   @@map("live_sessions")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model PasswordOtp {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_otps")
 }
 
 model SessionAttendance {

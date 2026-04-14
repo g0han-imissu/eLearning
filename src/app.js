@@ -1,9 +1,9 @@
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const morgan = require("morgan");
-const routes = require("./routes");
-const errorMiddleware = require("./middlewares/error.middleware");
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import routes from "./routes/index.js";
+import errorMiddleware from "./middlewares/error.middleware.js";
 
 const app = express();
 
@@ -16,4 +16,4 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 app.use("/api", routes);
 app.use(errorMiddleware);
 
-module.exports = app;
+export default app;

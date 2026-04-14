@@ -1,34 +1,13 @@
-const userService = require("./user.service");
+import * as userService from "./user.service.js";
 
-const listUsers = async (_req, res, next) => {
-  try {
-    const users = await userService.listUsers();
-    res.json(users);
-  } catch (error) {
-    next(error);
-  }
+export const listUsers = async (_req, res, next) => {
+  try { res.json(await userService.listUsers()); } catch (e) { next(e); }
 };
 
-const updateUserStatus = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-    const user = await userService.updateUserStatus({ id, status });
-    res.json(user);
-  } catch (error) {
-    next(error);
-  }
+export const updateUserStatus = async (req, res, next) => {
+  try { res.json(await userService.updateUserStatus({ id: req.params.id, status: req.body.status })); } catch (e) { next(e); }
 };
 
-const assignRoles = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { roleNames } = req.body;
-    const result = await userService.assignRoles({ id, roleNames });
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+export const assignRoles = async (req, res, next) => {
+  try { res.json(await userService.assignRoles({ id: req.params.id, roleNames: req.body.roleNames })); } catch (e) { next(e); }
 };
-
-module.exports = { listUsers, updateUserStatus, assignRoles };

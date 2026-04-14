@@ -1,4 +1,4 @@
-const ApiError = require("../utils/apiError");
+import ApiError from "../utils/apiError.js";
 
 const errorMiddleware = (err, _req, res, _next) => {
   if (err instanceof ApiError) {
@@ -13,4 +13,4 @@ const errorMiddleware = (err, _req, res, _next) => {
   return res.status(500).json({ message: "Internal server error" });
 };
 
-module.exports = errorMiddleware;
+export default errorMiddleware;

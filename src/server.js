@@ -1,6 +1,7 @@
-const app = require("./app");
-const prisma = require("./lib/prisma");
-const { port } = require("./config/env");
+import "./config/env.js"; // load .env trước tất cả
+import app from "./app.js";
+import prisma from "./lib/prisma.js";
+import { port } from "./config/env.js";
 
 const server = app.listen(port, () => {
   console.log(`Server listening on http://localhost:${port}`);

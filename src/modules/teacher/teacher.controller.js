@@ -1,22 +1,11 @@
-const teacherService = require("./teacher.service");
+import * as teacherService from "./teacher.service.js";
 
-const listMyTeachingClasses = async (req, res, next) => {
-  try {
-    const classes = await teacherService.listMyTeachingClasses(req.user.id);
-    res.json(classes);
-  } catch (error) {
-    next(error);
-  }
+export const listMyTeachingClasses = async (req, res, next) => {
+  try { res.json(await teacherService.listMyTeachingClasses(req.user.id)); } catch (e) { next(e); }
 };
 
-const listStudentsByClass = async (req, res, next) => {
+export const listStudentsByClass = async (req, res, next) => {
   try {
-    const { classId } = req.params;
-    const result = await teacherService.listStudentsByClass({ classId, userId: req.user.id });
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+    res.json(await teacherService.listStudentsByClass({ classId: req.params.classId, userId: req.user.id }));
+  } catch (e) { next(e); }
 };
-
-module.exports = { listMyTeachingClasses, listStudentsByClass };

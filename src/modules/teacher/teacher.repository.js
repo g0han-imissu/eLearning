@@ -1,6 +1,6 @@
-const prisma = require("../../lib/prisma");
+import prisma from "../../lib/prisma.js";
 
-const findClassesByTeacher = (teacherId) =>
+export const findClassesByTeacher = (teacherId) =>
   prisma.class.findMany({
     where: { teacherId },
     include: {
@@ -10,20 +10,12 @@ const findClassesByTeacher = (teacherId) =>
     orderBy: { createdAt: "desc" },
   });
 
-const findAssignedClass = (classId, teacherId) =>
-  prisma.class.findFirst({
-    where: { id: classId, teacherId },
-  });
+export const findAssignedClass = (classId, teacherId) =>
+  prisma.class.findFirst({ where: { id: classId, teacherId } });
 
-const findEnrollmentsByClass = (classId) =>
+export const findEnrollmentsByClass = (classId) =>
   prisma.enrollment.findMany({
     where: { classId },
-    include: {
-      student: {
-        select: { id: true, email: true, fullName: true, status: true, createdAt: true },
-      },
-    },
+    include: { student: { select: { id: true, email: true, fullName: true, status: true, createdAt: true } } },
     orderBy: { createdAt: "desc" },
   });
-
-module.exports = { findClassesByTeacher, findAssignedClass, findEnrollmentsByClass };

@@ -1,13 +1,11 @@
-const { Router } = require("express");
-const requireRoles = require("../../middlewares/rbac.middleware");
-const { listSessionsByClass, createLiveSession, markAttendance } = require("./live.controller");
+import { Router } from "express";
+import requireRoles from "../../middlewares/rbac.middleware.js";
+import { listSessionsByClass, createLiveSession, markAttendance } from "./live.controller.js";
 
 const router = Router();
 
-// GET /api/live/sessions/:classId?page=1&limit=10
 router.get("/sessions/:classId", listSessionsByClass);
-
 router.post("/sessions", requireRoles("ADMIN", "TEACHER"), createLiveSession);
 router.post("/attendance", requireRoles("ADMIN", "TEACHER"), markAttendance);
 
-module.exports = router;
+export default router;

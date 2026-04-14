@@ -1,7 +1,7 @@
-const jwt = require("jsonwebtoken");
-const prisma = require("../lib/prisma");
-const ApiError = require("../utils/apiError");
-const { jwtSecret } = require("../config/env");
+import jwt from "jsonwebtoken";
+import prisma from "../lib/prisma.js";
+import ApiError from "../utils/apiError.js";
+import { jwtSecret } from "../config/env.js";
 
 const authMiddleware = async (req, _res, next) => {
   try {
@@ -31,4 +31,4 @@ const authMiddleware = async (req, _res, next) => {
   }
 };
 
-module.exports = authMiddleware;
+export default authMiddleware;

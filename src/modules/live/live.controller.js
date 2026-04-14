@@ -1,34 +1,15 @@
-const liveService = require("./live.service");
+import * as liveService from "./live.service.js";
 
-// req.params.classId lấy từ URL: GET /live/sessions/:classId
-const listSessionsByClass = async (req, res, next) => {
+export const listSessionsByClass = async (req, res, next) => {
   try {
-    const result = await liveService.listSessionsByClass({
-      classId: req.params.classId,
-      query: req.query,
-    });
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+    res.json(await liveService.listSessionsByClass({ classId: req.params.classId, query: req.query }));
+  } catch (e) { next(e); }
 };
 
-const createLiveSession = async (req, res, next) => {
-  try {
-    const session = await liveService.createLiveSession({ body: req.body, user: req.user });
-    res.status(201).json(session);
-  } catch (error) {
-    next(error);
-  }
+export const createLiveSession = async (req, res, next) => {
+  try { res.status(201).json(await liveService.createLiveSession({ body: req.body, user: req.user })); } catch (e) { next(e); }
 };
 
-const markAttendance = async (req, res, next) => {
-  try {
-    const item = await liveService.markAttendance({ body: req.body, user: req.user });
-    res.json(item);
-  } catch (error) {
-    next(error);
-  }
+export const markAttendance = async (req, res, next) => {
+  try { res.json(await liveService.markAttendance({ body: req.body, user: req.user })); } catch (e) { next(e); }
 };
-
-module.exports = { listSessionsByClass, createLiveSession, markAttendance };

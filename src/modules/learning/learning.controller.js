@@ -1,68 +1,53 @@
-const learningService = require("./learning.service");
+import * as learningService from "./learning.service.js";
 
-// req.query chứa các tham số trên URL, ví dụ: ?page=1&limit=10
-const listPrograms = async (req, res, next) => {
-  try {
-    const result = await learningService.listPrograms(req.query);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+export const listPrograms = async (req, res, next) => {
+  try { res.json(await learningService.listPrograms(req.query)); } catch (e) { next(e); }
 };
-
-const listCourses = async (req, res, next) => {
-  try {
-    const result = await learningService.listCourses(req.query);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+export const listCourses = async (req, res, next) => {
+  try { res.json(await learningService.listCourses(req.query)); } catch (e) { next(e); }
 };
-
-const listClasses = async (req, res, next) => {
-  try {
-    const result = await learningService.listClasses(req.query);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+export const listClasses = async (req, res, next) => {
+  try { res.json(await learningService.listClasses(req.query)); } catch (e) { next(e); }
 };
-
-const createProgram = async (req, res, next) => {
-  try {
-    const program = await learningService.createProgram(req.body);
-    res.status(201).json(program);
-  } catch (error) {
-    next(error);
-  }
+export const createProgram = async (req, res, next) => {
+  try { res.status(201).json(await learningService.createProgram(req.body)); } catch (e) { next(e); }
 };
-
-const createCourse = async (req, res, next) => {
-  try {
-    const course = await learningService.createCourse(req.body);
-    res.status(201).json(course);
-  } catch (error) {
-    next(error);
-  }
+export const createCourse = async (req, res, next) => {
+  try { res.status(201).json(await learningService.createCourse(req.body)); } catch (e) { next(e); }
 };
-
-const createClass = async (req, res, next) => {
-  try {
-    const classItem = await learningService.createClass({ body: req.body, user: req.user });
-    res.status(201).json(classItem);
-  } catch (error) {
-    next(error);
-  }
+export const createClass = async (req, res, next) => {
+  try { res.status(201).json(await learningService.createClass({ body: req.body, user: req.user })); } catch (e) { next(e); }
 };
-
-const enrollClass = async (req, res, next) => {
+export const enrollClass = async (req, res, next) => {
   try {
     const { classId, studentId } = req.body;
-    const enrollment = await learningService.enrollClass({ classId, studentId, user: req.user });
-    res.status(201).json(enrollment);
-  } catch (error) {
-    next(error);
-  }
+    res.status(201).json(await learningService.enrollClass({ classId, studentId, user: req.user }));
+  } catch (e) { next(e); }
 };
-
-module.exports = { listPrograms, listCourses, listClasses, createProgram, createCourse, createClass, enrollClass };
+export const getProgram = async (req, res, next) => {
+  try { res.json(await learningService.getProgram(req.params.id)); } catch (e) { next(e); }
+};
+export const updateProgram = async (req, res, next) => {
+  try { res.json(await learningService.updateProgram(req.params.id, req.body)); } catch (e) { next(e); }
+};
+export const deleteProgram = async (req, res, next) => {
+  try { await learningService.deleteProgram(req.params.id); res.status(204).send(); } catch (e) { next(e); }
+};
+export const getCourse = async (req, res, next) => {
+  try { res.json(await learningService.getCourse(req.params.id)); } catch (e) { next(e); }
+};
+export const updateCourse = async (req, res, next) => {
+  try { res.json(await learningService.updateCourse(req.params.id, req.body)); } catch (e) { next(e); }
+};
+export const deleteCourse = async (req, res, next) => {
+  try { await learningService.deleteCourse(req.params.id); res.status(204).send(); } catch (e) { next(e); }
+};
+export const getClass = async (req, res, next) => {
+  try { res.json(await learningService.getClass(req.params.id)); } catch (e) { next(e); }
+};
+export const updateClass = async (req, res, next) => {
+  try { res.json(await learningService.updateClass(req.params.id, req.body)); } catch (e) { next(e); }
+};
+export const deleteClass = async (req, res, next) => {
+  try { await learningService.deleteClass(req.params.id); res.status(204).send(); } catch (e) { next(e); }
+};
