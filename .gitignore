@@ -1,5 +1,18 @@
+# Dependencies
 node_modules
-# Keep environment variables out of version control
-.env
+**/node_modules
 
+# Environment variables
+.env
+**/.env
+
+# Prisma generated
 /generated/prisma
+**/generated/prisma
+
+# Build output
+frontend/dist
+frontend/.vite
+
+# Claude Code
+.claude
