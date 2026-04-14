@@ -10,23 +10,27 @@ import StudentLayout from '../components/layout/StudentLayout';
 
 import AdminDashboard from '../pages/admin/DashboardPage';
 import AdminUsers from '../pages/admin/UsersPage';
+import AdminPrograms from '../pages/admin/ProgramsPage';
+import AdminCourses from '../pages/admin/CoursesPage';
+import AdminClasses from '../pages/admin/ClassesPage';
 import AdminExams from '../pages/admin/ExamsPage';
 
 import TeacherClasses from '../pages/teacher/ClassesPage';
+import TeacherLectures from '../pages/teacher/LecturesPage';
 import TeacherLive from '../pages/teacher/LivePage';
 
 import StudentClasses from '../pages/student/ClassesPage';
 import StudentLecture from '../pages/student/LecturePage';
 import StudentLive from '../pages/student/LivePage';
 
-// Guard: chưa đăng nhập → về /login
+import ProfilePage from '../pages/ProfilePage';
+
 function RequireAuth({ children }) {
   const token = useAuthStore((s) => s.accessToken);
   if (!token) return <Navigate to="/login" replace />;
   return children;
 }
 
-// Guard: đã đăng nhập → về dashboard theo role
 function RequireRole({ role, children }) {
   const user = useAuthStore((s) => s.user);
   if (!user?.roles?.includes(role)) return <Navigate to="/login" replace />;
@@ -43,7 +47,11 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <AdminDashboard /> },
       { path: 'users', element: <AdminUsers /> },
+      { path: 'programs', element: <AdminPrograms /> },
+      { path: 'courses', element: <AdminCourses /> },
+      { path: 'classes', element: <AdminClasses /> },
       { path: 'exams', element: <AdminExams /> },
+      { path: 'profile', element: <ProfilePage /> },
     ],
   },
 
@@ -52,7 +60,9 @@ const router = createBrowserRouter([
     element: <RequireAuth><RequireRole role="TEACHER"><TeacherLayout /></RequireRole></RequireAuth>,
     children: [
       { index: true, element: <TeacherClasses /> },
+      { path: 'lectures', element: <TeacherLectures /> },
       { path: 'live/:sessionId', element: <TeacherLive /> },
+      { path: 'profile', element: <ProfilePage /> },
     ],
   },
 
@@ -61,8 +71,9 @@ const router = createBrowserRouter([
     element: <RequireAuth><RequireRole role="STUDENT"><StudentLayout /></RequireRole></RequireAuth>,
     children: [
       { index: true, element: <StudentClasses /> },
-      { path: 'lecture/:lectureId', element: <StudentLecture /> },
+      { path: 'lecture/:classId', element: <StudentLecture /> },
       { path: 'live/:sessionId', element: <StudentLive /> },
+      { path: 'profile', element: <ProfilePage /> },
     ],
   },
 

@@ -1,7 +1,15 @@
 import pkg from "@prisma/client";
-const { PrismaClient } = pkg;
+import { PrismaPg } from "@prisma/adapter-pg";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const prisma = new PrismaClient();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+const { PrismaClient } = pkg;
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const roleNames = ["ADMIN", "TEACHER", "STUDENT"];

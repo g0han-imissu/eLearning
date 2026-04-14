@@ -1,12 +1,16 @@
 import { Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, GraduationCap, School, FileText, UserCircle } from 'lucide-react';
 import Sidebar from './Sidebar';
 import useAuthStore from '../../stores/authStore';
 
 const links = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/users', icon: Users, label: 'Người dùng' },
+  { to: '/admin/programs', icon: BookOpen, label: 'Chương trình' },
+  { to: '/admin/courses', icon: GraduationCap, label: 'Môn học' },
+  { to: '/admin/classes', icon: School, label: 'Lớp học' },
   { to: '/admin/exams', icon: FileText, label: 'Kì thi' },
+  { to: '/admin/profile', icon: UserCircle, label: 'Tài khoản' },
 ];
 
 export default function AdminLayout() {
@@ -19,9 +23,7 @@ export default function AdminLayout() {
           <h2 className="text-sm font-medium text-gray-600">Admin Portal</h2>
           <span className="text-sm text-gray-700 font-medium">{user?.fullName}</span>
         </header>
-        <main className="flex-1 p-6 bg-gray-50">
-          <Outlet />
-        </main>
+        <main className="flex-1 p-6 bg-gray-50"><Outlet /></main>
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
 import { Outlet } from 'react-router-dom';
-import { BookOpen, GraduationCap } from 'lucide-react';
+import { BookOpen, UserCircle } from 'lucide-react';
 import Sidebar from './Sidebar';
 import useAuthStore from '../../stores/authStore';
 
 const links = [
   { to: '/student', icon: BookOpen, label: 'Lớp học của tôi' },
+  { to: '/student/profile', icon: UserCircle, label: 'Tài khoản' },
 ];
 
 export default function StudentLayout() {
@@ -17,9 +18,7 @@ export default function StudentLayout() {
           <h2 className="text-sm font-medium text-gray-600">Học viên</h2>
           <span className="text-sm text-gray-700 font-medium">{user?.fullName}</span>
         </header>
-        <main className="flex-1 p-6 bg-gray-50">
-          <Outlet />
-        </main>
+        <main className="flex-1 p-6 bg-gray-50"><Outlet /></main>
       </div>
     </div>
   );
