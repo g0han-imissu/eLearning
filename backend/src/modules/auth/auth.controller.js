@@ -6,10 +6,11 @@ const registerSchema = z.object({
   password: z.string().min(6),
   fullName: z.string().min(2),
   phone: z.string().optional(),
+  classCode: z.string().min(1, "Mã lớp học là bắt buộc"),
 });
 
 const loginSchema = z.object({
-  email: z.email(),
+  email: z.string().min(1), // email hoặc username ("bkhn.gv001")
   password: z.string().min(1),
 });
 
@@ -96,6 +97,35 @@ export const verifyEmail = async (req, res, next) => {
   try {
     const { token } = req.query;
     const result = await authService.verifyEmail({ token });
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const activateAccountSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(6),
+});
+
+// Org Admin được mời qua email: kích hoạt tài khoản + tự đặt mật khẩu
+export const activateAccount = async (req, res, next) => {
+  try {
+    const data = activateAccountSchema.parse(req.body);
+    const result = await authService.activateAccount(data);
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const firstPasswordSchema = z.object({ newPassword: z.string().min(6) });
+
+// User được cấp mật khẩu tạm: bắt buộc đổi mật khẩu lần đầu
+export const firstChangePassword = async (req, res, next) => {
+  try {
+    const { newPassword } = firstPasswordSchema.parse(req.body);
+    const result = await authService.firstChangePassword({ userId: req.user.id, newPassword });
     return res.json(result);
   } catch (error) {
     return next(error);

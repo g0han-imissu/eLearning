@@ -31,21 +31,56 @@ export const listClasses = async (query) => {
 };
 
 export const createProgram = (data) => repo.createProgram(data);
-export const createCourse = (data) => repo.createCourse(data);
 
-export const createClass = ({ body, user }) => {
-  const data = { ...body };
+// FK từ client phải được xác thực qua prisma đã scope:
+// findUnique trả null nếu resource thuộc org khác → chặn tham chiếu chéo tenant
+export const createCourse = async (data) => {
+  const program = await repo.findProgramById(data.programId);
+  if (!program) throw new ApiError(404, "Program not found");
+  return repo.createCourse(data);
+};
+
+// Input type=date của form gửi "YYYY-MM-DD" — Prisma DateTime cần Date/ISO đầy đủ
+const normalizeDates = (data) => {
+  for (const key of ["startDate", "endDate"]) {
+    if (data[key]) {
+      const d = new Date(data[key]);
+      if (Number.isNaN(d.getTime())) throw new ApiError(400, `${key} không hợp lệ`);
+      data[key] = d;
+    } else if (data[key] === "" || data[key] === null) {
+      data[key] = null;
+    }
+  }
+  return data;
+};
+
+export const createClass = async ({ body, user }) => {
+  const data = normalizeDates({ ...body });
   const isTeacher = user.roles.includes("TEACHER");
   if (isTeacher && data.teacherId && data.teacherId !== user.id) {
     throw new ApiError(403, "Teacher can only create class for self");
   }
   if (isTeacher) data.teacherId = user.id;
+
+  const course = await repo.findCourseById(data.courseId);
+  if (!course) throw new ApiError(404, "Course not found");
+  if (!isTeacher && data.teacherId) {
+    const teacher = await repo.findUserById(data.teacherId);
+    if (!teacher) throw new ApiError(404, "Teacher not found");
+  }
   return repo.createClass(data);
 };
 
-export const enrollClass = ({ classId, studentId, user }) => {
+export const enrollClass = async ({ classId, studentId, user }) => {
   const targetStudentId = user.roles.includes("STUDENT") ? user.id : studentId;
   if (!targetStudentId) throw new ApiError(400, "Missing studentId");
+
+  const classItem = await repo.findClassById(classId);
+  if (!classItem) throw new ApiError(404, "Class not found");
+  if (targetStudentId !== user.id) {
+    const student = await repo.findUserById(targetStudentId);
+    if (!student) throw new ApiError(404, "Student not found");
+  }
   return repo.upsertEnrollment({ classId, studentId: targetStudentId });
 };
 
@@ -89,10 +124,16 @@ export const getClass = async (id) => {
 
 export const updateClass = async (id, data) => {
   await getClass(id);
-  return repo.updateClass(id, data);
+  return repo.updateClass(id, normalizeDates({ ...data }));
 };
 
 export const deleteClass = async (id) => {
   await getClass(id);
   return repo.deleteClass(id);
+};
+
+export const getTeachersByCourse = async (courseId) => {
+  const course = await repo.findCourseById(courseId);
+  if (!course) throw new ApiError(404, "Course not found");
+  return repo.findTeachersByCourse(courseId);
 };

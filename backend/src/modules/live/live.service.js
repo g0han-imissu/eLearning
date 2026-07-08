@@ -20,7 +20,7 @@ export const listSessionsByClass = async ({ classId, query }) => {
 export const createLiveSession = async ({ body, user }) => {
   const classItem = await repo.findClassById(body.classId);
   if (!classItem) throw new ApiError(404, "Class not found");
-  if (!user.roles.includes("ADMIN") && classItem.teacherId !== user.id) {
+  if (!user.roles.includes("ORG_ADMIN") && classItem.teacherId !== user.id) {
     throw new ApiError(403, "You can only create session for assigned classes");
   }
   return repo.createLiveSession(body);
@@ -39,7 +39,7 @@ export const joinSession = async ({ sessionId, user }) => {
   const session = await repo.findLiveSessionWithClass(sessionId);
   if (!session) throw new ApiError(404, "Session not found");
 
-  const isTeacherOrAdmin = user.roles.includes("ADMIN") || user.roles.includes("TEACHER");
+  const isTeacherOrAdmin = user.roles.includes("ORG_ADMIN") || user.roles.includes("TEACHER");
 
   if (!isTeacherOrAdmin) {
     const enrollment = await repo.findEnrollmentByClassAndStudent(session.classId, user.id);
@@ -80,7 +80,7 @@ export const markAttendance = async ({ body, user }) => {
   const { sessionId, userId, status, joinedAt, durationMin } = body;
   const session = await repo.findLiveSessionWithClass(sessionId);
   if (!session) throw new ApiError(404, "Session not found");
-  if (!user.roles.includes("ADMIN") && session.class.teacherId !== user.id) {
+  if (!user.roles.includes("ORG_ADMIN") && session.class.teacherId !== user.id) {
     throw new ApiError(403, "You can only update attendance in assigned classes");
   }
   return repo.upsertAttendance({ sessionId, userId, status, joinedAt, durationMin });

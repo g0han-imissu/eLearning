@@ -51,3 +51,7 @@ export const updateClass = async (req, res, next) => {
 export const deleteClass = async (req, res, next) => {
   try { await learningService.deleteClass(req.params.id); res.status(204).send(); } catch (e) { next(e); }
 };
+
+export const getCourseTeachers = async (req, res, next) => {
+  try { res.json(await learningService.getTeachersByCourse(req.params.id)); } catch (e) { next(e); }
+};

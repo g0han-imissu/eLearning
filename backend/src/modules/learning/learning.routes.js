@@ -4,30 +4,31 @@ import {
   listPrograms, listCourses, listClasses,
   createProgram, createCourse, createClass, enrollClass,
   getProgram, updateProgram, deleteProgram,
-  getCourse, updateCourse, deleteCourse,
+  getCourse, updateCourse, deleteCourse, getCourseTeachers,
   getClass, updateClass, deleteClass,
 } from "./learning.controller.js";
 
 const router = Router();
 
 router.get("/programs", listPrograms);
-router.post("/programs", requireRoles("ADMIN"), createProgram);
+router.post("/programs", requireRoles("ORG_ADMIN"), createProgram);
 router.get("/programs/:id", getProgram);
-router.patch("/programs/:id", requireRoles("ADMIN"), updateProgram);
-router.delete("/programs/:id", requireRoles("ADMIN"), deleteProgram);
+router.patch("/programs/:id", requireRoles("ORG_ADMIN"), updateProgram);
+router.delete("/programs/:id", requireRoles("ORG_ADMIN"), deleteProgram);
 
 router.get("/courses", listCourses);
-router.post("/courses", requireRoles("ADMIN"), createCourse);
+router.post("/courses", requireRoles("ORG_ADMIN"), createCourse);
 router.get("/courses/:id", getCourse);
-router.patch("/courses/:id", requireRoles("ADMIN"), updateCourse);
-router.delete("/courses/:id", requireRoles("ADMIN"), deleteCourse);
+router.get("/courses/:id/teachers", requireRoles("ORG_ADMIN"), getCourseTeachers);
+router.patch("/courses/:id", requireRoles("ORG_ADMIN"), updateCourse);
+router.delete("/courses/:id", requireRoles("ORG_ADMIN"), deleteCourse);
 
 router.get("/classes", listClasses);
-router.post("/classes", requireRoles("ADMIN", "TEACHER"), createClass);
+router.post("/classes", requireRoles("ORG_ADMIN", "TEACHER"), createClass);
 router.get("/classes/:id", getClass);
-router.patch("/classes/:id", requireRoles("ADMIN", "TEACHER"), updateClass);
-router.delete("/classes/:id", requireRoles("ADMIN"), deleteClass);
+router.patch("/classes/:id", requireRoles("ORG_ADMIN", "TEACHER"), updateClass);
+router.delete("/classes/:id", requireRoles("ORG_ADMIN"), deleteClass);
 
-router.post("/enrollments", requireRoles("ADMIN", "STUDENT"), enrollClass);
+router.post("/enrollments", requireRoles("ORG_ADMIN", "STUDENT"), enrollClass);
 
 export default router;

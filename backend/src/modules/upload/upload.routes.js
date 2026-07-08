@@ -5,8 +5,8 @@ import * as uploadController from "./upload.controller.js";
 
 const router = Router();
 
-router.post("/video", requireRoles("ADMIN", "TEACHER"), uploadVideo, uploadController.uploadVideo);
-router.post("/document", requireRoles("ADMIN", "TEACHER"), uploadDocument, uploadController.uploadDocument);
+router.post("/video", requireRoles("ORG_ADMIN", "TEACHER"), uploadVideo, uploadController.uploadVideo);
+router.post("/document", requireRoles("ORG_ADMIN", "TEACHER"), uploadDocument, uploadController.uploadDocument);
 router.post("/image", uploadImage, uploadController.uploadImage);
 
 export default router;

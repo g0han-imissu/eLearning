@@ -1,9 +1,32 @@
-import prisma from "../../lib/prisma.js";
+import { prismaAdmin as prisma } from "../../lib/prisma.js";
+
+// Module auth chạy trước khi có tenant context (login/refresh/register)
+// nên dùng prismaAdmin (không auto-scope). Mọi query ở đây đều theo danh tính user.
 
 export const findUserByEmail = (email) =>
   prisma.user.findUnique({
     where: { email },
-    include: { roles: { include: { role: true } } },
+    include: {
+      roles: { include: { role: true } },
+      organization: { select: { id: true, name: true, slug: true, code: true, status: true } },
+    },
+  });
+
+// Login bằng email hoặc username (username kiểu "bkhn.gv001" — không chứa @)
+export const findUserByIdentifier = (identifier) =>
+  prisma.user.findUnique({
+    where: identifier.includes("@") ? { email: identifier } : { username: identifier.toLowerCase() },
+    include: {
+      roles: { include: { role: true } },
+      organization: { select: { id: true, name: true, slug: true, code: true, status: true } },
+    },
+  });
+
+// Thu hồi mật khẩu tạm trong import row ngay khi user tự đặt mật khẩu
+export const clearTempPasswordForUser = (userId) =>
+  prisma.importRow.updateMany({
+    where: { createdUserId: userId, tempPassword: { not: null } },
+    data: { tempPassword: null },
   });
 
 export const findUserById = (id) =>
@@ -18,12 +41,24 @@ export const updateUser = (id, data) =>
 
 export const findRoleByName = (name) => prisma.role.findUnique({ where: { name } });
 
-export const registerUser = ({ email, passwordHash, fullName, phone, roleId }) =>
+// Tra mã lớp xuyên tổ chức — chỉ dùng cho luồng đăng ký công khai
+export const findClassByCodeGlobal = (code) =>
+  prisma.class.findFirst({
+    where: { code },
+    include: { organization: { select: { id: true, status: true } } },
+  });
+
+export const registerUser = ({ email, passwordHash, fullName, phone, roleId, organizationId, pendingClassId }) =>
   prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
-      data: { email, passwordHash, fullName, phone },
+      data: { email, passwordHash, fullName, phone, status: 'ACTIVE', organizationId },
     });
     await tx.userRole.create({ data: { userId: user.id, roleId } });
+    if (pendingClassId) {
+      await tx.enrollment.create({
+        data: { classId: pendingClassId, studentId: user.id, organizationId, status: 'PENDING' },
+      });
+    }
     return user;
   });
 
@@ -33,7 +68,14 @@ export const saveRefreshToken = ({ userId, token, expiresAt }) =>
 export const findRefreshToken = (token) =>
   prisma.refreshToken.findUnique({
     where: { token },
-    include: { user: { include: { roles: { include: { role: true } } } } },
+    include: {
+      user: {
+        include: {
+          roles: { include: { role: true } },
+          organization: { select: { id: true, status: true } },
+        },
+      },
+    },
   });
 
 export const deleteRefreshToken = (token) =>

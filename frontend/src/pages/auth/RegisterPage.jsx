@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { MailCheck } from 'lucide-react';
+import { CheckCircle, UserPlus } from 'lucide-react';
 import { register as registerApi } from '../../api/auth.api';
+import AuthShell from '../../components/layout/AuthShell';
+import FormField, { Input, Button } from '../../components/ui/FormField';
 
 export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-  const [registeredEmail, setRegisteredEmail] = useState('');
 
   const { register, handleSubmit, formState: { errors } } = useForm();
 
@@ -17,7 +18,6 @@ export default function RegisterPage() {
     setError('');
     try {
       await registerApi(data);
-      setRegisteredEmail(data.email);
       setDone(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký thất bại');
@@ -28,93 +28,75 @@ export default function RegisterPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MailCheck size={32} className="text-green-600" />
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="glass p-8 w-full max-w-md text-center">
+          <div className="w-16 h-16 bg-emerald-500/15 ring-1 ring-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={32} className="text-emerald-300" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Kiểm tra email của bạn</h2>
-          <p className="text-gray-500 text-sm mb-1">Chúng tôi đã gửi link xác nhận đến</p>
-          <p className="font-semibold text-gray-800 mb-4">{registeredEmail}</p>
-          <p className="text-gray-400 text-xs mb-6">Nhấn vào link trong email để kích hoạt tài khoản. Link có hiệu lực trong 24 giờ.</p>
-          <Link to="/login" className="text-indigo-600 hover:underline text-sm font-medium">Quay lại đăng nhập</Link>
+          <h2 className="text-xl font-bold text-white mb-2">Đăng ký thành công!</h2>
+          <p className="text-slate-400 text-sm mb-6">Tài khoản của bạn đã được tạo. Bạn có thể đăng nhập ngay bây giờ.</p>
+          <Link
+            to="/login"
+            className="inline-block bg-gradient-to-r from-indigo-500 to-violet-600 hover:brightness-110 text-white font-semibold rounded-xl px-6 py-2.5 text-sm shadow-lg shadow-indigo-600/30 transition-all"
+          >
+            Đăng nhập ngay
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-3">
-            <span className="text-white text-xl font-bold">L</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Đăng ký tài khoản</h1>
-        </div>
+    <AuthShell
+      headline={'Bắt đầu hành trình\nhọc tập của bạn'}
+      tagline="Tạo tài khoản để truy cập lớp học, bài giảng và lớp học trực tuyến."
+    >
+      <h1 className="text-2xl font-bold text-white tracking-tight">Tạo tài khoản mới</h1>
+      <p className="text-slate-400 text-sm mt-2 mb-9">Điền thông tin bên dưới để đăng ký</p>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl px-4 py-3 mb-5 text-sm">{error}</div>
+      )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên</label>
-            <input
-              {...register('fullName', { required: 'Vui lòng nhập họ tên' })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="Nguyễn Văn A"
-            />
-            {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message}</p>}
-          </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <FormField label="Họ tên" error={errors.fullName?.message}>
+          <Input placeholder="Nguyễn Văn A" {...register('fullName', { required: 'Vui lòng nhập họ tên' })} />
+        </FormField>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              {...register('email', { required: 'Vui lòng nhập email' })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="email@example.com"
-            />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
-          </div>
+        <FormField label="Email" error={errors.email?.message}>
+          <Input type="email" autoComplete="email" placeholder="email@example.com" {...register('email', { required: 'Vui lòng nhập email' })} />
+        </FormField>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
-            <input
-              type="password"
-              {...register('password', { required: 'Vui lòng nhập mật khẩu', minLength: { value: 6, message: 'Tối thiểu 6 ký tự' } })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="••••••••"
-            />
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
-          </div>
+        <FormField label="Mật khẩu" error={errors.password?.message}>
+          <Input
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            {...register('password', { required: 'Vui lòng nhập mật khẩu', minLength: { value: 6, message: 'Tối thiểu 6 ký tự' } })}
+          />
+        </FormField>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-            <input
-              {...register('phone')}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="0912345678 (tuỳ chọn)"
-            />
-          </div>
+        <FormField label="Số điện thoại">
+          <Input placeholder="0912345678 (tuỳ chọn)" {...register('phone')} />
+        </FormField>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-medium rounded-lg py-2.5 text-sm transition-colors"
-          >
-            {loading ? 'Đang đăng ký...' : 'Đăng ký'}
-          </button>
-        </form>
+        <FormField label="Mã lớp học" error={errors.classCode?.message}>
+          <Input
+            placeholder="Mã lớp do giảng viên / nhà trường cung cấp"
+            {...register('classCode', { required: 'Vui lòng nhập mã lớp học' })}
+          />
+        </FormField>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Đã có tài khoản?{' '}
-          <Link to="/login" className="text-indigo-600 hover:underline font-medium">Đăng nhập</Link>
-        </p>
-      </div>
-    </div>
+        <Button type="submit" disabled={loading} className="w-full !py-3 !mt-8">
+          <UserPlus size={16} />
+          {loading ? 'Đang đăng ký...' : 'Đăng ký'}
+        </Button>
+      </form>
+
+      <p className="text-center text-sm text-slate-400 mt-7">
+        Đã có tài khoản?{' '}
+        <Link to="/login" className="text-indigo-300 hover:text-indigo-200 hover:underline font-semibold">Đăng nhập</Link>
+      </p>
+    </AuthShell>
   );
 }

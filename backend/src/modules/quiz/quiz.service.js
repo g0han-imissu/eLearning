@@ -2,7 +2,7 @@ import ApiError from "../../utils/apiError.js";
 import * as repo from "./quiz.repository.js";
 
 const assertCanEdit = (lecture, user) => {
-  if (!user.roles.includes("ADMIN") && lecture.ownerId !== user.id) {
+  if (!user.roles.includes("ORG_ADMIN") && lecture.ownerId !== user.id) {
     throw new ApiError(403, "You can only edit your own lecture");
   }
 };

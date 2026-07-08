@@ -7,19 +7,27 @@ export const createClass = (data) => prisma.class.create({ data });
 export const upsertEnrollment = ({ classId, studentId }) =>
   prisma.enrollment.upsert({
     where: { classId_studentId: { classId, studentId } },
-    create: { classId, studentId },
+    create: { classId, studentId, status: "ENROLLED" },
     update: { status: "ENROLLED" },
   });
 
 export const findPrograms = ({ skip, take }) =>
   prisma.$transaction([
-    prisma.program.findMany({ skip, take, orderBy: { createdAt: "desc" } }),
+    prisma.program.findMany({
+      skip, take,
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { courses: true } } },
+    }),
     prisma.program.count(),
   ]);
 
 export const findCourses = ({ skip, take }) =>
   prisma.$transaction([
-    prisma.course.findMany({ skip, take, orderBy: { createdAt: "desc" }, include: { program: true } }),
+    prisma.course.findMany({
+      skip, take,
+      orderBy: { createdAt: "desc" },
+      include: { program: true, _count: { select: { classes: true } } },
+    }),
     prisma.course.count(),
   ]);
 
@@ -39,6 +47,9 @@ export const findClasses = ({ skip, take }) =>
 
 export const findProgramById = (id) =>
   prisma.program.findUnique({ where: { id }, include: { courses: true } });
+
+export const findUserById = (id) =>
+  prisma.user.findUnique({ where: { id }, select: { id: true } });
 
 export const updateProgram = (id, data) => prisma.program.update({ where: { id }, data });
 export const deleteProgram = (id) => prisma.program.delete({ where: { id } });
@@ -61,3 +72,15 @@ export const findClassById = (id) =>
 
 export const updateClass = (id, data) => prisma.class.update({ where: { id }, data });
 export const deleteClass = (id) => prisma.class.delete({ where: { id } });
+
+export const findTeachersByCourse = (courseId) =>
+  prisma.user.findMany({
+    where: {
+      status: "ACTIVE",
+      roles: { some: { role: { name: "TEACHER" } } },
+      teacherCourses: { some: { courseId } },
+    },
+    omit: { passwordHash: true },
+    include: { roles: { include: { role: true } } },
+    orderBy: { fullName: "asc" },
+  });

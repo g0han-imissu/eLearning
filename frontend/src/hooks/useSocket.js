@@ -2,20 +2,34 @@ import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import useAuthStore from '../stores/authStore';
 
-export default function useSocket({ sessionId, onQuizLaunched, onQuizResult, onQuizEnded }) {
+export default function useSocket({
+  sessionId,
+  name,
+  onRoomJoined,
+  onRoomLeft,
+  onQuizLaunched,
+  onQuizResult,
+  onQuizEnded,
+}) {
   const socketRef = useRef(null);
   const accessToken = useAuthStore((s) => s.accessToken);
+
+  // Keep callbacks in refs so handlers always use latest version
+  const cbRef = useRef({});
+  cbRef.current = { onRoomJoined, onRoomLeft, onQuizLaunched, onQuizResult, onQuizEnded };
 
   useEffect(() => {
     if (!sessionId || !accessToken) return;
 
-    const socket = io('/', { auth: { token: accessToken } });
+    const socket = io(import.meta.env.VITE_SOCKET_URL || '/', { auth: { token: accessToken } });
     socketRef.current = socket;
 
-    socket.emit('join-room', sessionId);
-    socket.on('quiz:launched', onQuizLaunched);
-    socket.on('quiz:result', onQuizResult);
-    socket.on('quiz:ended', onQuizEnded);
+    socket.emit('join-room', { sessionId, name });
+    socket.on('room:joined', (data) => cbRef.current.onRoomJoined?.(data));
+    socket.on('room:left', (data) => cbRef.current.onRoomLeft?.(data));
+    socket.on('quiz:launched', (data) => cbRef.current.onQuizLaunched?.(data));
+    socket.on('quiz:result', (data) => cbRef.current.onQuizResult?.(data));
+    socket.on('quiz:ended', () => cbRef.current.onQuizEnded?.());
 
     return () => socket.disconnect();
   }, [sessionId, accessToken]);

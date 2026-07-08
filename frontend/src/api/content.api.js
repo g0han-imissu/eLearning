@@ -16,4 +16,5 @@ export const deleteModule = (id) => api.delete(`/content/modules/${id}`);
 // Contents
 export const getContent = (id) => api.get(`/content/contents/${id}`);
 export const createContent = (data) => api.post('/content/contents', data);
+export const updateContent = (id, data) => api.patch(`/content/contents/${id}`, data);
 export const deleteContent = (id) => api.delete(`/content/contents/${id}`);

@@ -12,6 +12,7 @@ export const findLectures = ({ skip, take, where = {} }) =>
       orderBy: { createdAt: "desc" },
       include: {
         course: true,
+        class: { include: { course: true } },
         owner: { omit: { passwordHash: true } },
         modules: {
           orderBy: { orderIndex: "asc" },
@@ -27,8 +28,7 @@ export const findLectures = ({ skip, take, where = {} }) =>
     prisma.lecture.count({ where }),
   ]);
 
-export const findClassByTeacherAndCourse = (teacherId, courseId) =>
-  prisma.class.findFirst({ where: { teacherId, courseId } });
+export const findClassById = (id) => prisma.class.findUnique({ where: { id } });
 
 export const createModule = (data) => prisma.module.create({ data });
 
@@ -53,6 +53,7 @@ export const findLectureWithModules = (id) =>
     where: { id },
     include: {
       course: true,
+      class: { include: { course: true } },
       owner: { omit: { passwordHash: true } },
       modules: {
         orderBy: { orderIndex: "asc" },
@@ -86,5 +87,40 @@ export const deleteModule = (id) => prisma.module.delete({ where: { id } });
 export const findContentById = (id) =>
   prisma.content.findUnique({ where: { id }, include: { video: true, document: true, quiz: true } });
 
-export const updateContent = (id, data) => prisma.content.update({ where: { id }, data });
 export const deleteContent = (id) => prisma.content.delete({ where: { id } });
+
+export const updateContentWithMedia = ({ id, type, title, orderIndex, payload }) =>
+  prisma.$transaction(async (tx) => {
+    const data = {};
+    if (title !== undefined) data.title = title;
+    if (orderIndex !== undefined) data.orderIndex = orderIndex;
+    if (Object.keys(data).length > 0) await tx.content.update({ where: { id }, data });
+
+    if (payload) {
+      if (type === "VIDEO") {
+        await tx.video.upsert({
+          where: { contentId: id },
+          create: { contentId: id, ...payload },
+          update: payload,
+        });
+      } else if (type === "DOCUMENT") {
+        await tx.document.upsert({
+          where: { contentId: id },
+          create: { contentId: id, ...payload },
+          update: payload,
+        });
+      } else if (type === "QUIZ" && payload.title) {
+        await tx.quiz.update({ where: { contentId: id }, data: { title: payload.title } });
+      }
+    }
+    return tx.content.findUnique({ where: { id }, include: { video: true, document: true, quiz: true } });
+  });
+
+export const findStudentEnrollmentByClass = (studentId, classId) =>
+  prisma.enrollment.findFirst({
+    where: {
+      studentId,
+      classId,
+      status: { in: ["ENROLLED", "IN_PROGRESS", "COMPLETED"] },
+    },
+  });

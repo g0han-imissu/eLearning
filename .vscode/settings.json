@@ -1,0 +1,5 @@
+{
+  "eslint.workingDirectories": ["./backend", "./frontend"],
+  "typescript.preferences.includePackageJsonAutoImports": "on",
+  "javascript.preferences.importModuleSpecifierEnding": "js"
+}

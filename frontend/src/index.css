@@ -1,17 +1,57 @@
 @import "tailwindcss";
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Tăng kích thước gốc → chữ to hơn và khoảng cách (rem-based) rộng hơn toàn app */
+html {
+  font-size: 17.5px;
 }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
+  line-height: 1.6;
+  color: #e2e8f0;
+  background-color: #070b18;
+  background-image:
+    radial-gradient(55rem 55rem at 110% -10%, rgba(99, 102, 241, 0.20), transparent 60%),
+    radial-gradient(45rem 45rem at -10% 5%, rgba(168, 85, 247, 0.16), transparent 55%),
+    radial-gradient(40rem 40rem at 50% 120%, rgba(56, 189, 248, 0.10), transparent 60%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
 #root {
   min-height: 100vh;
 }
+
+/* Glass design system (dark) */
+@layer components {
+  .glass {
+    @apply bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl shadow-black/30;
+  }
+  .glass-soft {
+    @apply bg-white/[0.04] backdrop-blur-md border border-white/10 rounded-2xl;
+  }
+  .glass-input {
+    @apply w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-transparent;
+  }
+}
+
+/* Chrome autofill: giữ nền tối thay vì nền trắng mặc định */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #141a2e inset;
+  -webkit-text-fill-color: #e2e8f0;
+  caret-color: #e2e8f0;
+  transition: background-color 999999s ease-in-out 0s;
+}
+
+/* Animations */
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalIn { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.animate-overlay { animation: overlayIn 0.18s ease-out; }
+.animate-modal { animation: modalIn 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Thanh cuộn tối */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.4); }

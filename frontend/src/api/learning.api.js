@@ -10,6 +10,7 @@ export const deleteProgram = (id) => api.delete(`/learning/programs/${id}`);
 // Courses
 export const getCourses = (params) => api.get('/learning/courses', { params });
 export const getCourse = (id) => api.get(`/learning/courses/${id}`);
+export const getCourseTeachers = (courseId) => api.get(`/learning/courses/${courseId}/teachers`);
 export const createCourse = (data) => api.post('/learning/courses', data);
 export const updateCourse = (id, data) => api.patch(`/learning/courses/${id}`, data);
 export const deleteCourse = (id) => api.delete(`/learning/courses/${id}`);

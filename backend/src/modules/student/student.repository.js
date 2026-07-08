@@ -21,8 +21,9 @@ export const findEnrollment = (classId, studentId) =>
 export const updateEnrollmentProgress = (classId, studentId, data) =>
   prisma.enrollment.update({ where: { classId_studentId: { classId, studentId } }, data });
 
+// code chỉ unique trong 1 org; extension tự scope theo org của student
 export const findClassByCode = (code) =>
-  prisma.class.findUnique({ where: { code }, include: { course: true, teacher: { select: { id: true, fullName: true } } } });
+  prisma.class.findFirst({ where: { code }, include: { course: true, teacher: { select: { id: true, fullName: true } } } });
 
 export const requestJoinClass = (classId, studentId) =>
   prisma.enrollment.upsert({

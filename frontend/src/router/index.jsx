@@ -4,10 +4,18 @@ import useAuthStore from '../stores/authStore';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
+import ActivateAccountPage from '../pages/auth/ActivateAccountPage';
+import FirstPasswordPage from '../pages/auth/FirstPasswordPage';
+import OrgRegisterPage from '../pages/public/OrgRegisterPage';
 
 import AdminLayout from '../components/layout/AdminLayout';
 import TeacherLayout from '../components/layout/TeacherLayout';
 import StudentLayout from '../components/layout/StudentLayout';
+import SuperAdminLayout from '../components/layout/SuperAdminLayout';
+
+import SuperAdminDashboard from '../pages/superadmin/DashboardPage';
+import SuperAdminRequests from '../pages/superadmin/OrgRequestsPage';
+import SuperAdminOrganizations from '../pages/superadmin/OrganizationsPage';
 
 import AdminDashboard from '../pages/admin/DashboardPage';
 import AdminUsers from '../pages/admin/UsersPage';
@@ -19,6 +27,7 @@ import AdminExams from '../pages/admin/ExamsPage';
 import TeacherClasses from '../pages/teacher/ClassesPage';
 import TeacherLectures from '../pages/teacher/LecturesPage';
 import TeacherLive from '../pages/teacher/LivePage';
+import TeacherCoursePreferences from '../pages/teacher/CoursesPreferencePage';
 
 import StudentClasses from '../pages/student/ClassesPage';
 import StudentLecture from '../pages/student/LecturePage';
@@ -34,7 +43,8 @@ function RequireAuth({ children }) {
 
 function RequireRole({ role, children }) {
   const user = useAuthStore((s) => s.user);
-  if (!user?.roles?.includes(role)) return <Navigate to="/login" replace />;
+  const roles = Array.isArray(role) ? role : [role];
+  if (!roles.some((r) => user?.roles?.includes(r))) return <Navigate to="/login" replace />;
   return children;
 }
 
@@ -42,10 +52,24 @@ const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/verify-email', element: <VerifyEmailPage /> },
+  { path: '/activate-account', element: <ActivateAccountPage /> },
+  { path: '/first-password', element: <FirstPasswordPage /> },
+  { path: '/org-register', element: <OrgRegisterPage /> },
+
+  {
+    path: '/super',
+    element: <RequireAuth><RequireRole role="SUPER_ADMIN"><SuperAdminLayout /></RequireRole></RequireAuth>,
+    children: [
+      { index: true, element: <SuperAdminDashboard /> },
+      { path: 'requests', element: <SuperAdminRequests /> },
+      { path: 'organizations', element: <SuperAdminOrganizations /> },
+      { path: 'profile', element: <ProfilePage /> },
+    ],
+  },
 
   {
     path: '/admin',
-    element: <RequireAuth><RequireRole role="ADMIN"><AdminLayout /></RequireRole></RequireAuth>,
+    element: <RequireAuth><RequireRole role={['ORG_ADMIN', 'ADMIN']}><AdminLayout /></RequireRole></RequireAuth>,
     children: [
       { index: true, element: <AdminDashboard /> },
       { path: 'users', element: <AdminUsers /> },
@@ -63,6 +87,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <TeacherClasses /> },
       { path: 'lectures', element: <TeacherLectures /> },
+      { path: 'my-courses', element: <TeacherCoursePreferences /> },
       { path: 'live/:sessionId', element: <TeacherLive /> },
       { path: 'profile', element: <ProfilePage /> },
     ],
@@ -86,7 +111,8 @@ const router = createBrowserRouter([
 function RootRedirect() {
   const user = useAuthStore((s) => s.user);
   if (!user) return <Navigate to="/login" replace />;
-  if (user.roles?.includes('ADMIN')) return <Navigate to="/admin" replace />;
+  if (user.roles?.includes('SUPER_ADMIN')) return <Navigate to="/super" replace />;
+  if (user.roles?.includes('ORG_ADMIN') || user.roles?.includes('ADMIN')) return <Navigate to="/admin" replace />;
   if (user.roles?.includes('TEACHER')) return <Navigate to="/teacher" replace />;
   return <Navigate to="/student" replace />;
 }

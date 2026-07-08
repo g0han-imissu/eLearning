@@ -14,5 +14,9 @@ node_modules
 frontend/dist
 frontend/.vite
 
+# Uploaded files (local storage fallback)
+backend/uploads
+**/uploads
+
 # Claude Code
 .claude

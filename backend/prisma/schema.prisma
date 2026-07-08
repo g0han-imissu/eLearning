@@ -12,6 +12,44 @@ enum UserStatus {
   INACTIVE
 }
 
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ImportJobType {
+  TEACHER
+  STUDENT
+}
+
+enum ImportJobStatus {
+  PROCESSING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+  ROLLED_BACK
+}
+
+enum ImportRowStatus {
+  SUCCESS
+  ERROR
+  SKIPPED
+  ROLLED_BACK
+}
+
+enum ImportSource {
+  CSV
+  XLSX
+  MANUAL
+  API
+}
+
 enum ClassStatus {
   DRAFT
   OPEN
@@ -39,26 +77,120 @@ enum AttendanceStatus {
   LATE
 }
 
+model Organization {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  code      String    @unique // organizationCode: dùng làm prefix username, hiển thị cho Org Admin
+  status    OrgStatus @default(ACTIVE)
+  plan      String    @default("FREE")
+  maxUsers  Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  users        User[]
+  programs     Program[]
+  courses      Course[]
+  classes      Class[]
+  enrollments  Enrollment[]
+  lectures     Lecture[]
+  registration OrganizationRegistrationRequest?
+  importJobs   ImportJob[]
+
+  @@map("organizations")
+}
+
+model OrganizationRegistrationRequest {
+  id             String             @id @default(cuid())
+  orgName        String
+  contactName    String
+  email          String
+  phone          String?
+  expectedUsers  Int?
+  note           String?
+  status         RegistrationStatus @default(PENDING)
+  rejectReason   String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+  organizationId String?            @unique
+  createdAt      DateTime           @default(now())
+
+  reviewedBy   User?         @relation("ReviewedRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("organization_registration_requests")
+}
+
 model User {
-  id            String       @id @default(cuid())
-  email         String       @unique
-  passwordHash  String
-  fullName      String
-  phone         String?
-  avatarUrl     String?
-  status        UserStatus   @default(PENDING)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  taughtClasses  Class[]         @relation("TeacherClasses")
-  enrollments    Enrollment[]
-  ownedLectures  Lecture[]
-  roles          UserRole[]
-  attendances    SessionAttendance[]
+  id             String       @id @default(cuid())
+  organizationId String?
+  email          String?      @unique // optional: user import không email đăng nhập bằng username
+  username       String?      @unique // "bkhn.gv001" — chứa sẵn org code, unique toàn cục
+  userCode       String? // mã GV/SV do tổ chức cấp (từ SIS)
+  department     String?
+  mustChangePassword Boolean  @default(false)
+  passwordHash   String
+  fullName       String
+  phone          String?
+  avatarUrl      String?
+  bio            String?
+  specialization String?
+  status         UserStatus   @default(PENDING)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization       Organization?       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  taughtClasses      Class[]             @relation("TeacherClasses")
+  enrollments        Enrollment[]
+  ownedLectures      Lecture[]
+  roles              UserRole[]
+  attendances        SessionAttendance[]
   refreshTokens      RefreshToken[]
   passwordOtp        PasswordOtp?
   emailVerification  EmailVerification?
+  teacherCourses     TeacherCourse[]
+  reviewedRequests   OrganizationRegistrationRequest[] @relation("ReviewedRequests")
+  createdImportJobs  ImportJob[]
 
+  @@unique([organizationId, userCode])
+  @@index([organizationId, status])
   @@map("users")
+}
+
+model ImportJob {
+  id             String          @id @default(cuid())
+  organizationId String
+  type           ImportJobType
+  source         ImportSource    @default(CSV)
+  fileName       String?
+  status         ImportJobStatus @default(PROCESSING)
+  totalRows      Int             @default(0)
+  successCount   Int             @default(0)
+  errorCount     Int             @default(0)
+  createdById    String
+  createdAt      DateTime        @default(now())
+  completedAt    DateTime?
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  rows           ImportRow[]
+
+  @@index([organizationId, createdAt])
+  @@map("import_jobs")
+}
+
+model ImportRow {
+  id            String          @id @default(cuid())
+  jobId         String
+  rowNumber     Int
+  rawData       Json
+  status        ImportRowStatus @default(ERROR)
+  errorMessage  String?
+  createdUserId String?
+  tempPassword  String? // chỉ với user không email; xóa khi user đổi mật khẩu hoặc admin thu hồi
+  job           ImportJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, rowNumber])
+  @@map("import_rows")
 }
 
 model Role {
@@ -82,53 +214,78 @@ model UserRole {
 }
 
 model Program {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  title       String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  courses     Course[]
+  id             String   @id @default(cuid())
+  organizationId String
+  code           String
+  title          String
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  courses        Course[]
 
+  @@unique([organizationId, code])
   @@map("programs")
 }
 
 model Course {
-  id          String   @id @default(cuid())
-  programId   String
-  code        String   @unique
-  title       String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  classes     Class[]
-  lectures    Lecture[]
-  program     Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
+  id                 String          @id @default(cuid())
+  organizationId     String
+  programId          String
+  code               String
+  title              String
+  description        String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  classes            Class[]
+  lectures           Lecture[]
+  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  program            Program         @relation(fields: [programId], references: [id], onDelete: Restrict)
+  teacherPreferences TeacherCourse[]
 
+  @@unique([organizationId, code])
+  @@index([organizationId])
   @@map("courses")
+}
+
+model TeacherCourse {
+  teacherId String
+  courseId  String
+  createdAt DateTime @default(now())
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, courseId])
+  @@map("teacher_courses")
 }
 
 model Class {
   id            String       @id @default(cuid())
+  organizationId String
   courseId       String
   teacherId      String
-  code           String       @unique
+  code           String
   title          String
   startDate      DateTime?
   endDate        DateTime?
   status         ClassStatus  @default(DRAFT)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   course         Course       @relation(fields: [courseId], references: [id], onDelete: Restrict)
   teacher        User         @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Restrict)
   enrollments    Enrollment[]
   liveSessions   LiveSession[]
+  lectures       Lecture[]
 
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
   @@map("classes")
 }
 
 model Enrollment {
   id          String           @id @default(cuid())
+  organizationId String
   classId     String
   studentId   String
   status      EnrollmentStatus @default(ENROLLED)
@@ -137,26 +294,33 @@ model Enrollment {
   completedAt DateTime?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   class       Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
   student     User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([classId, studentId])
+  @@index([organizationId])
   @@map("enrollments")
 }
 
 model Lecture {
   id          String   @id @default(cuid())
+  organizationId String
   courseId     String
+  classId      String?
   ownerId      String
   title        String
   description  String?
   isPublished  Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  class        Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
   owner        User     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   modules      Module[]
 
+  @@index([organizationId, ownerId])
   @@map("lectures")
 }
 

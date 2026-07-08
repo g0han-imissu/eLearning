@@ -2,19 +2,30 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import ApiError from "../../utils/apiError.js";
-import { jwtSecret, jwtExpiresIn, refreshTokenExpiresInDays, clientUrl } from "../../config/env.js";
+import { jwtSecret, jwtExpiresIn, refreshTokenExpiresInDays } from "../../config/env.js";
 import {
   findUserByEmail, findUserById, updateUser,
-  findRoleByName, registerUser,
+  findUserByIdentifier, clearTempPasswordForUser,
+  findRoleByName, registerUser, findClassByCodeGlobal,
   saveRefreshToken, findRefreshToken, deleteRefreshToken,
   deleteAllRefreshTokensByUser, deleteExpiredRefreshTokens,
   upsertPasswordOtp, findPasswordOtp, deletePasswordOtp,
-  upsertEmailVerification, findEmailVerificationByToken,
-  deleteEmailVerification, activateUser,
+  findEmailVerificationByToken, deleteEmailVerification, activateUser,
 } from "./auth.repository.js";
-import { sendOtpEmail, sendVerificationEmail } from "../../lib/email.js";
+import { sendOtpEmail } from "../../lib/email.js";
 
-const signAccessToken = (userId) => jwt.sign({ userId }, jwtSecret, { expiresIn: jwtExpiresIn });
+// organizationId/roles trong payload chỉ để client hiển thị UI;
+// authorization luôn dựa trên dữ liệu load lại từ DB ở auth.middleware.
+const signAccessToken = (user) =>
+  jwt.sign(
+    {
+      userId: user.id,
+      organizationId: user.organizationId ?? null,
+      roles: (user.roles || []).map((x) => x.role?.name ?? x),
+    },
+    jwtSecret,
+    { expiresIn: jwtExpiresIn }
+  );
 
 const createRefreshToken = async (userId) => {
   const token = crypto.randomBytes(40).toString("hex");
@@ -24,25 +35,34 @@ const createRefreshToken = async (userId) => {
   return token;
 };
 
-export const register = async ({ email, password, fullName, phone }) => {
+export const register = async ({ email, password, fullName, phone, classCode }) => {
   const existed = await findUserByEmail(email);
   if (existed) throw new ApiError(409, "Email already exists");
+
+  // Multi-tenant: student phải đăng ký qua mã lớp để xác định Organization
+  if (!classCode) throw new ApiError(400, "Vui lòng nhập mã lớp học để đăng ký.");
+  const classItem = await findClassByCodeGlobal(classCode);
+  if (!classItem) throw new ApiError(404, "Không tìm thấy lớp học với mã này.");
+  if (classItem.organization.status !== "ACTIVE") {
+    throw new ApiError(403, "Tổ chức của lớp học này hiện không hoạt động.");
+  }
+  if (classItem.status === "CLOSED" || classItem.status === "ARCHIVED") {
+    throw new ApiError(400, "Lớp học này không còn nhận thêm học viên.");
+  }
 
   const studentRole = await findRoleByName("STUDENT");
   if (!studentRole) throw new ApiError(500, "Missing STUDENT role");
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await registerUser({ email, passwordHash, fullName, phone, roleId: studentRole.id });
-
-  const token = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-  await upsertEmailVerification({ userId: user.id, token, expiresAt });
-
-  const verifyUrl = `${clientUrl}/verify-email?token=${token}`;
-  await sendVerificationEmail({ to: email, verifyUrl }).catch(() => {});
+  const user = await registerUser({
+    email, passwordHash, fullName, phone,
+    roleId: studentRole.id,
+    organizationId: classItem.organizationId,
+    pendingClassId: classItem.id,
+  });
 
   return {
-    message: "Đăng ký thành công. Vui lòng kiểm tra email để xác nhận tài khoản.",
+    message: "Đăng ký thành công. Yêu cầu tham gia lớp đã được gửi tới giảng viên.",
     user: { id: user.id, email: user.email, status: user.status },
   };
 };
@@ -65,17 +85,36 @@ export const verifyEmail = async ({ token }) => {
   return { message: "Tài khoản đã được xác nhận. Bạn có thể đăng nhập ngay bây giờ." };
 };
 
+// Org Admin nhận link mời qua email → đặt mật khẩu lần đầu + kích hoạt
+export const activateAccount = async ({ token, password }) => {
+  const record = await findEmailVerificationByToken(token);
+  if (!record) throw new ApiError(400, "Liên kết kích hoạt không hợp lệ hoặc đã được sử dụng.");
+  if (record.expiresAt < new Date()) {
+    throw new ApiError(400, "Liên kết kích hoạt đã hết hạn. Vui lòng liên hệ quản trị viên nền tảng.");
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await updateUser(record.userId, { passwordHash, status: "ACTIVE", mustChangePassword: false });
+  await deleteEmailVerification(record.userId);
+  await clearTempPasswordForUser(record.userId);
+
+  return { message: "Tài khoản đã được kích hoạt. Bạn có thể đăng nhập ngay bây giờ." };
+};
+
 export const login = async ({ email, password }) => {
-  const user = await findUserByEmail(email);
+  const user = await findUserByIdentifier(email); // email hoặc username
   if (!user) throw new ApiError(401, "Invalid credentials");
 
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) throw new ApiError(401, "Invalid credentials");
   if (user.status !== "ACTIVE") throw new ApiError(403, "Account is not active");
+  if (user.organization && user.organization.status !== "ACTIVE") {
+    throw new ApiError(403, "Tổ chức của bạn đang bị tạm khóa. Vui lòng liên hệ quản trị viên nền tảng.");
+  }
 
   await deleteExpiredRefreshTokens();
 
-  const accessToken = signAccessToken(user.id);
+  const accessToken = signAccessToken(user);
   const refreshToken = await createRefreshToken(user.id);
 
   return {
@@ -84,10 +123,31 @@ export const login = async ({ email, password }) => {
     user: {
       id: user.id,
       email: user.email,
+      username: user.username,
       fullName: user.fullName,
+      mustChangePassword: user.mustChangePassword,
       roles: user.roles.map((x) => x.role.name),
+      organization: user.organization
+        ? { id: user.organization.id, name: user.organization.name, slug: user.organization.slug, code: user.organization.code }
+        : null,
     },
   };
+};
+
+// Đổi mật khẩu bắt buộc lần đầu (user được cấp mật khẩu tạm khi import)
+export const firstChangePassword = async ({ userId, newPassword }) => {
+  const user = await findUserById(userId);
+  if (!user) throw new ApiError(404, "User not found");
+  if (!user.mustChangePassword) {
+    throw new ApiError(400, "Tài khoản này không yêu cầu đổi mật khẩu lần đầu.");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await updateUser(userId, { passwordHash, mustChangePassword: false });
+  await clearTempPasswordForUser(userId);
+  await deleteAllRefreshTokensByUser(userId);
+
+  return { message: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại." };
 };
 
 export const refresh = async ({ refreshToken }) => {
@@ -102,8 +162,11 @@ export const refresh = async ({ refreshToken }) => {
 
   const user = record.user;
   if (user.status !== "ACTIVE") throw new ApiError(403, "Account is not active");
+  if (user.organization && user.organization.status !== "ACTIVE") {
+    throw new ApiError(403, "Organization is suspended");
+  }
 
-  return { accessToken: signAccessToken(user.id) };
+  return { accessToken: signAccessToken(user) };
 };
 
 export const logout = async ({ refreshToken, logoutAll, userId }) => {
@@ -146,18 +209,21 @@ export const confirmChangePassword = async ({ userId, otp, currentPassword, newP
   if (currentPassword === newPassword) throw new ApiError(400, "New password must be different.");
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await updateUser(userId, { passwordHash });
+  await updateUser(userId, { passwordHash, mustChangePassword: false });
   await deletePasswordOtp(userId);
+  await clearTempPasswordForUser(userId);
   await deleteAllRefreshTokensByUser(userId);
 
   return { message: "Password changed successfully. Please login again." };
 };
 
 export const updateProfile = async ({ userId, data }) => {
-  const { fullName, phone, avatarUrl } = data;
+  const { fullName, phone, avatarUrl, bio, specialization } = data;
   return updateUser(userId, {
     ...(fullName !== undefined && { fullName }),
     ...(phone !== undefined && { phone }),
     ...(avatarUrl !== undefined && { avatarUrl }),
+    ...(bio !== undefined && { bio }),
+    ...(specialization !== undefined && { specialization }),
   });
 };

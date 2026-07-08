@@ -27,6 +27,18 @@ export const uploadDocument = multer({
   ]),
 }).single("file");
 
+export const uploadSpreadsheet = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: fileFilter([
+    "text/csv",
+    "application/csv",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/octet-stream", // một số trình duyệt gửi CSV với mime này
+  ]),
+}).single("file");
+
 export const uploadImage = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },

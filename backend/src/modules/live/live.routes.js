@@ -5,8 +5,8 @@ import { listSessionsByClass, createLiveSession, joinSession, markAttendance } f
 const router = Router();
 
 router.get("/sessions/:classId", listSessionsByClass);
-router.post("/sessions", requireRoles("ADMIN", "TEACHER"), createLiveSession);
+router.post("/sessions", requireRoles("ORG_ADMIN", "TEACHER"), createLiveSession);
 router.post("/sessions/:sessionId/join", joinSession);
-router.post("/attendance", requireRoles("ADMIN", "TEACHER"), markAttendance);
+router.post("/attendance", requireRoles("ORG_ADMIN", "TEACHER"), markAttendance);
 
 export default router;
