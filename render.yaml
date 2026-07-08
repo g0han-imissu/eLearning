@@ -1,0 +1,41 @@
+# Render Blueprint — deploy 1 service: Express phục vụ cả API + frontend build
+# DB dùng Neon (free Postgres) — điền DATABASE_URL trong Render dashboard.
+services:
+  - type: web
+    name: elearning
+    runtime: node
+    plan: free
+    buildCommand: cd backend && npm ci --include=dev && npx prisma generate && cd ../frontend && npm ci --include=dev && npm run build
+    startCommand: cd backend && npx prisma migrate deploy && node prisma/seed.js && node src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # dán connection string từ Neon
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        sync: false # https://<tên-app>.onrender.com — dùng cho link trong email
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: AGORA_APP_ID
+        sync: false
+      - key: AGORA_APP_CERTIFICATE
+        sync: false
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+      - key: SUPER_ADMIN_PASSWORD
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
